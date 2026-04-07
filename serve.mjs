@@ -262,8 +262,20 @@ async function runExternalSearchAgent(query) {
   const intent = classifyIntent(query);
   const searchQueries = buildSearchQueries(query, intent);
   const [searchResponses, wikipediaSource] = await Promise.all([
-    Promise.all(searchQueries.map((searchQuery) => callTavilySearch(searchQuery))),
-    fetchWikipediaSummary(query)
+    Promise.all(
+      searchQueries.map(async (searchQuery) => {
+        try {
+          return await callTavilySearch(searchQuery);
+        } catch (error) {
+          console.error(`Tavily search failed for "${searchQuery}":`, error);
+          return [];
+        }
+      })
+    ),
+    fetchWikipediaSummary(query).catch((error) => {
+      console.error(`Wikipedia fallback failed for "${query}":`, error);
+      return null;
+    })
   ]);
 
   const rankedSources = rankAndSummarizeResults(searchResponses.flat());
@@ -273,12 +285,13 @@ async function runExternalSearchAgent(query) {
         ...rankedSources.filter((source) => source.url !== wikipediaSource.url)
       ].slice(0, 5)
     : rankedSources;
+  const finalAnswer = buildFinalAnswer(sources);
 
   return {
     query: normalizeWhitespace(query),
     search_queries: searchQueries,
     sources,
-    final_answer: buildFinalAnswer(sources)
+    final_answer: finalAnswer === "insufficient data" ? "Live search is temporarily unavailable. Try again in a moment." : finalAnswer
   };
 }
 

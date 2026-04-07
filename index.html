@@ -377,9 +377,24 @@
     }
 
     .related-row {
+      display: none;
+      gap: 12px;
+    }
+
+    .related-row.is-visible {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+    }
+
+    .related-label {
+      display: none;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .related-label.is-visible {
+      display: block;
     }
 
     .related-chip {
@@ -390,6 +405,48 @@
       padding: 10px 14px;
       font-size: 0.86rem;
       cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+
+    .related-chip:hover {
+      background: var(--chip-hover);
+      border-color: #d2e3fc;
+      transform: translateY(-1px);
+    }
+
+    .location-card {
+      width: min(560px, calc(100% - 24px));
+      margin: 72px auto 0;
+      padding: 18px 20px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      border: 1px solid #d7e3fc;
+      box-shadow: var(--shadow-soft);
+      text-align: center;
+    }
+
+    .location-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--blue);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .location-text {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .location-meta {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.88rem;
     }
 
     .empty-state {
@@ -424,6 +481,11 @@
       .search-stage,
       .results-section {
         width: 100%;
+      }
+
+      .location-card {
+        width: 100%;
+        margin-top: 56px;
       }
 
       .search-shell {
@@ -512,11 +574,18 @@
         <div id="citations" class="citations"></div>
       </article>
 
-        <div class="results-head" id="resultsHead"></div>
+      <div class="results-head" id="resultsHead"></div>
 
+      <div id="relatedLabel" class="related-label">Suggested questions</div>
       <div id="relatedRow" class="related-row"></div>
       <div id="results" class="results-list"></div>
       <div id="emptyState" class="empty-state"></div>
+    </section>
+
+    <section class="location-card" aria-live="polite">
+      <div class="location-label">Live location</div>
+      <p id="locationText" class="location-text">Waiting for browser location permission.</p>
+      <div id="locationMeta" class="location-meta"></div>
     </section>
   </main>
 
@@ -641,13 +710,18 @@
     const citationsEl = document.getElementById("citations");
     const resultsEl = document.getElementById("results");
     const relatedRow = document.getElementById("relatedRow");
+    const relatedLabel = document.getElementById("relatedLabel");
     const resultsHead = document.getElementById("resultsHead");
     const emptyState = document.getElementById("emptyState");
+    const locationText = document.getElementById("locationText");
+    const locationMeta = document.getElementById("locationMeta");
 
     let activeItems = [];
     let activeIndex = -1;
     let recognition = null;
     let liveSuggestions = [];
+    let answerTypingTimer = null;
+    let answerTypingToken = 0;
 
 
     function readHistory() {
@@ -702,12 +776,148 @@
       return staticDataset[normalized] || null;
     }
 
+    function clearAnswerTyping() {
+      if (answerTypingTimer) {
+        clearTimeout(answerTypingTimer);
+        answerTypingTimer = null;
+      }
+    }
+
+    function animateAnswerText(message) {
+      const content = (message || "").trim();
+      const token = ++answerTypingToken;
+
+      clearAnswerTyping();
+
+      if (!content) {
+        answerText.textContent = "";
+        return;
+      }
+
+      answerText.textContent = "";
+
+      const step = (index) => {
+        if (token !== answerTypingToken) {
+          return;
+        }
+
+        answerText.textContent = content.slice(0, index);
+        if (index < content.length) {
+          answerTypingTimer = setTimeout(() => step(index + 1), 12);
+        } else {
+          answerTypingTimer = null;
+        }
+      };
+
+      step(1);
+    }
+
+    function setSuggestedQuestions(items, currentQuery) {
+      const suggestions = [...new Set((items || [])
+        .map((item) => typeof item === "string" ? item.trim() : "")
+        .filter(Boolean)
+        .filter((item) => item.toLowerCase() !== currentQuery.toLowerCase()))]
+        .slice(0, 4);
+
+      relatedRow.innerHTML = "";
+
+      if (!suggestions.length) {
+        relatedLabel.classList.remove("is-visible");
+        relatedRow.classList.remove("is-visible");
+        return;
+      }
+
+      suggestions.forEach((item) => {
+        const button = document.createElement("button");
+        button.className = "related-chip";
+        button.type = "button";
+        button.textContent = item;
+        button.addEventListener("click", () => {
+          queryInput.value = item;
+          queryInput.focus();
+          void executeSearch(item);
+        });
+        relatedRow.appendChild(button);
+      });
+
+      relatedLabel.classList.add("is-visible");
+      relatedRow.classList.add("is-visible");
+    }
+
+    function buildFollowUpQuestions(query, sources) {
+      const cleanedQuery = query.trim();
+      const sourceTitle = sources[0]?.title || "";
+      const shortTopic = sourceTitle || cleanedQuery;
+
+      return [
+        `Explain ${cleanedQuery} in simple terms`,
+        `How does ${cleanedQuery} connect to quantum SEO?`,
+        `What are the practical uses of ${shortTopic}?`,
+        `Give examples related to ${cleanedQuery}`
+      ];
+    }
+
+    async function updateUserLocation() {
+      if (!("geolocation" in navigator)) {
+        locationText.textContent = "This browser does not support live location.";
+        locationMeta.textContent = "";
+        return;
+      }
+
+      locationText.textContent = "Requesting your current location...";
+      locationMeta.textContent = "";
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          locationText.textContent = `Latitude ${latitude.toFixed(5)}, Longitude ${longitude.toFixed(5)}`;
+          locationMeta.textContent = `Accuracy about ${Math.round(accuracy)} meters.`;
+
+          try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+            if (!response.ok) {
+              throw new Error(`Reverse geocode failed with status ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const address = payload.address || {};
+            const locality = [address.city, address.town, address.village, address.state, address.country]
+              .filter(Boolean)
+              .join(", ");
+
+            if (locality) {
+              locationText.textContent = locality;
+              locationMeta.textContent = `Latitude ${latitude.toFixed(5)}, Longitude ${longitude.toFixed(5)}. Accuracy about ${Math.round(accuracy)} meters.`;
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        },
+        (error) => {
+          const errors = {
+            1: "Location access was denied in the browser.",
+            2: "Your location could not be determined.",
+            3: "Location request timed out."
+          };
+
+          locationText.textContent = errors[error.code] || "Unable to read your current location.";
+          locationMeta.textContent = "";
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000
+        }
+      );
+    }
+
     function renderResults(query) {
       const value = query.trim();
       if (!value) {
+        clearAnswerTyping();
         answerWrap.classList.remove("is-visible");
         resultsEl.innerHTML = "";
-        relatedRow.innerHTML = "";
+        setSuggestedQuestions([], "");
         emptyState.style.display = "block";
         emptyState.textContent = "";
         resultsHead.style.display = "none";
@@ -717,19 +927,18 @@
       const state = getState(value);
       if (!state) {
         answerWrap.classList.add("is-visible");
-        answerText.textContent = "No cached preview is available for this query.";
+        animateAnswerText("No cached preview is available for this query.");
         citationsEl.innerHTML = "";
         resultsEl.innerHTML = "";
-        relatedRow.innerHTML = "";
+        setSuggestedQuestions(buildFollowUpQuestions(value, []), value);
         emptyState.style.display = "block";
         emptyState.textContent = "Try a live search.";
         return;
       }
 
-      answerText.textContent = state.answer;
+      animateAnswerText(state.answer);
       citationsEl.innerHTML = "";
       resultsEl.innerHTML = "";
-      relatedRow.innerHTML = "";
 
       state.citations.forEach((citation) => {
         const link = document.createElement("a");
@@ -751,17 +960,7 @@
         resultsEl.appendChild(card);
       });
 
-      state.relatedQueries.forEach((item) => {
-        const button = document.createElement("button");
-        button.className = "related-chip";
-        button.type = "button";
-        button.textContent = item;
-        button.addEventListener("click", () => {
-          queryInput.value = item;
-          void executeSearch(item);
-        });
-        relatedRow.appendChild(button);
-      });
+      setSuggestedQuestions(state.relatedQueries, value);
 
       answerWrap.classList.add("is-visible");
       resultsHead.style.display = "none";
@@ -772,10 +971,10 @@
     function renderErrorState(query, message) {
       const value = query.trim();
       answerWrap.classList.add("is-visible");
-      answerText.textContent = message || "Search is temporarily unavailable.";
+      animateAnswerText(message || "Search is temporarily unavailable.");
       citationsEl.innerHTML = "";
       resultsEl.innerHTML = "";
-      relatedRow.innerHTML = "";
+      setSuggestedQuestions(buildFollowUpQuestions(value, []), value);
       resultsHead.style.display = "none";
       emptyState.style.display = "block";
       emptyState.textContent = value ? `No live results returned for "${value}".` : "Search is temporarily unavailable.";
@@ -783,10 +982,9 @@
 
     function renderLiveResults(query, payload) {
       const sources = Array.isArray(payload.sources) ? payload.sources : [];
-      answerText.textContent = payload.final_answer || "insufficient data";
+      animateAnswerText(payload.final_answer || "insufficient data");
       citationsEl.innerHTML = "";
       resultsEl.innerHTML = "";
-      relatedRow.innerHTML = "";
 
       sources.forEach((source) => {
         const link = document.createElement("a");
@@ -806,17 +1004,10 @@
         resultsEl.appendChild(card);
       });
 
-      (payload.search_queries || []).filter((item) => item.toLowerCase() !== query.toLowerCase()).slice(0, 3).forEach((item) => {
-        const button = document.createElement("button");
-        button.className = "related-chip";
-        button.type = "button";
-        button.textContent = item;
-        button.addEventListener("click", () => {
-          queryInput.value = item;
-          void executeSearch(item);
-        });
-        relatedRow.appendChild(button);
-      });
+      setSuggestedQuestions(
+        (payload.search_queries || []).length ? payload.search_queries : buildFollowUpQuestions(query, sources),
+        query
+      );
 
       answerWrap.classList.add("is-visible");
       resultsHead.style.display = "none";
@@ -936,6 +1127,7 @@
         return;
       }
 
+      queryInput.value = value;
       saveHistory(value);
       closeDropdown();
 
@@ -1106,6 +1298,7 @@
     renderResults("");
     closeDropdown();
     void loadTrendingTopics();
+    void updateUserLocation();
   </script>
 </body>
 </html>
