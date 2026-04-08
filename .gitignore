@@ -6,3 +6,6 @@ dist
 playwright-report
 test-results
 .data
+.tools/
+__pycache__/
+*.pyc
