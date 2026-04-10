@@ -7,6 +7,7 @@ from backend.ranking.bm25 import rank_with_bm25
 from backend.ranking.freshness import apply_freshness_boost
 from backend.ranking.fusion import reciprocal_rank_fusion
 from backend.ranking.pagerank import apply_pagerank_boost
+from backend.search.ai_pipeline import generate_ai_answer, search_web
 from backend.search.query_parser import parse_query
 from backend.search.result_builder import build_answer, build_sources
 from backend.storage.postgres import PostgresStorage
@@ -19,7 +20,15 @@ class SearchEngine:
     redis: RedisStorage
     search_index: SearchIndexClient
 
-    async def search(self, query: str, limit: int = 10) -> dict:
+    async def search(
+        self,
+        query: str,
+        limit: int = 10,
+        region: str = "",
+        language: str = "",
+        safe_search: str = "",
+        attachment_context: str = "",
+    ) -> dict:
         parsed_query = parse_query(query)
         search_queries = [item for item in parsed_query.search_queries if item]
 
@@ -42,12 +51,28 @@ class SearchEngine:
         ranked_results = apply_freshness_boost(ranked_results)
         ranked_results.sort(key=lambda item: item["score"], reverse=True)
 
+        web_results = await search_web(primary_query, self.redis, limit=limit)
+        merged_results = self._merge_results(ranked_results, web_results, limit=limit)
+        built_sources = build_sources(merged_results, limit=limit)
+        final_answer = await generate_ai_answer(
+            query=parsed_query.normalized,
+            sources=built_sources,
+            redis_storage=self.redis,
+            attachment_context=attachment_context,
+        )
+
         return {
             "query": parsed_query.normalized,
             "search_queries": search_queries,
-            "sources": build_sources(ranked_results, limit=limit),
-            "final_answer": build_answer(ranked_results),
+            "sources": built_sources,
+            "final_answer": final_answer or build_answer(merged_results),
             "index_status": await self._build_index_status(),
+            "search_settings": {
+                "region": region,
+                "language": language,
+                "safe_search": safe_search,
+                "attachment_context": attachment_context,
+            },
         }
 
     async def _build_index_status(self) -> dict:
@@ -64,3 +89,19 @@ class SearchEngine:
             "sources": [],
             "final_answer": "insufficient data",
         }
+
+    @staticmethod
+    def _merge_results(local_results: list[dict], web_results: list[dict], limit: int = 10) -> list[dict]:
+        deduped: list[dict] = []
+        seen_urls: set[str] = set()
+
+        for result in [*web_results, *local_results]:
+            url = str(result.get("url", "")).strip()
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            deduped.append(result)
+            if len(deduped) >= limit:
+                break
+
+        return deduped

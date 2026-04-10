@@ -15,6 +15,9 @@ from backend.api.health import router as health_router
 from backend.api.search import router as search_router
 from backend.api.suggest import router as suggest_router
 from backend.api.trending import router as trending_router
+from backend.api.auth import router as auth_router
+from backend.api.translate import router as translate_router
+from backend.api.attachments import router as attachments_router
 from backend.config import settings
 from backend.crawler.scheduler import CrawlScheduler
 from backend.runtime import build_frontier, open_runtime_services, require_redis, require_search_index
@@ -63,6 +66,9 @@ app.include_router(search_router, prefix="/api")
 app.include_router(suggest_router, prefix="/api")
 app.include_router(trending_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(translate_router, prefix="/api")
+app.include_router(attachments_router, prefix="/api")
 
 
 def _iter_tracked_files() -> Iterable[Path]:

@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quantum SEO</title>
-  <link rel="stylesheet" href="./assets/styles.css" />
+  <link rel="stylesheet" href="./assets/styles.css?v=20260410ab" />
 </head>
 <body>
   <main class="page">
     <header class="page-header">
-      <nav class="auth-actions" aria-label="Account actions">
+      <nav class="auth-actions" aria-label="Account actions" hidden>
         <button class="auth-button auth-button-primary" type="button" data-auth-trigger="signup">
           Sign up for more
         </button>
@@ -17,7 +17,27 @@
           Log In
         </button>
       </nav>
-      <div class="top-brand" aria-label="QuAir Search">[QuAir Search]</div>
+
+      <div class="header-brand-stack">
+        <a class="top-brand" href="/" aria-label="QuAir Search">[QuAir Search]</a>
+
+        <div id="userProfile" class="user-profile" hidden>
+          <button id="avatarButton" class="avatar-button" type="button" aria-label="User menu" aria-expanded="false" aria-controls="profileDropdown">
+            <img id="avatarImage" class="avatar-image" src="" alt="" />
+            <span id="avatarFallback" class="avatar-fallback" aria-hidden="true"></span>
+          </button>
+          <div id="profileDropdown" class="profile-dropdown" role="menu" hidden>
+            <div class="profile-info">
+              <strong id="profileName" class="profile-name"></strong>
+              <span id="profileEmail" class="profile-email"></span>
+            </div>
+            <hr class="profile-divider" />
+            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="overview">Profile overview</button>
+            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="settings">Settings</button>
+            <button id="logoutButton" class="profile-menu-item" type="button" role="menuitem">Sign out</button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <section class="hero">
@@ -68,15 +88,7 @@
             </button>
 
             <button
-              id="clearButton"
-              class="icon-button clear-button"
-              type="button"
-              aria-label="Clear search"
-            >
-              ×
-            </button>
 
-            <button
               id="searchButton"
               class="icon-button search-submit"
               type="button"
@@ -228,6 +240,91 @@
     </section>
   </div>
 
-  <script type="module" src="./assets/app.js"></script>
+  <div id="profileModal" class="profile-modal" aria-hidden="true">
+    <div id="profileBackdrop" class="profile-backdrop"></div>
+    <section
+      class="profile-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profilePanelTitle"
+    >
+      <button id="profileCloseButton" class="profile-close" type="button" aria-label="Close profile panel">
+        ×
+      </button>
+
+      <div class="profile-panel-header">
+        <p class="profile-panel-kicker">Account</p>
+        <h2 id="profilePanelTitle" class="profile-panel-title">Your profile</h2>
+        <p id="profilePanelDescription" class="profile-panel-description"></p>
+      </div>
+
+      <div id="profileOverviewSection" class="profile-section">
+        <div class="profile-summary-card">
+          <div class="profile-summary-avatar-wrap">
+            <img id="profileSummaryAvatar" class="profile-summary-avatar" src="" alt="" />
+            <span id="profileSummaryFallback" class="profile-summary-fallback" aria-hidden="true"></span>
+          </div>
+          <div class="profile-summary-content">
+            <strong id="profileSummaryName" class="profile-summary-name"></strong>
+            <span id="profileSummaryEmail" class="profile-summary-email"></span>
+            <span id="profileSummaryProvider" class="profile-summary-provider"></span>
+          </div>
+        </div>
+
+        <form id="profileForm" class="profile-form">
+          <label class="profile-field">
+            <span class="profile-field-label">Display name</span>
+            <input id="profileNameInput" class="profile-input" type="text" placeholder="Your display name" />
+          </label>
+          <label class="profile-field">
+            <span class="profile-field-label">Email or username</span>
+            <input id="profileHandleInput" class="profile-input" type="text" placeholder="you@example.com or @username" />
+          </label>
+          <label class="profile-field">
+            <span class="profile-field-label profile-field-label-hidden">Avatar image URL</span>
+            <input id="profileAvatarInput" class="profile-input" type="url" placeholder="Avatar image URL" />
+          </label>
+          <button class="profile-save-button" type="submit">Save profile</button>
+        </form>
+      </div>
+
+      <form id="settingsForm" class="profile-form profile-section" hidden>
+        <label class="profile-field">
+          <span class="profile-field-label">Display language</span>
+          <span class="settings-help">For buttons, labels, hints, etc.</span>
+          <select id="settingDisplayLanguage" class="profile-input"></select>
+        </label>
+
+        <label class="profile-field">
+          <span class="profile-field-label">Region</span>
+          <span class="settings-help">For your search results</span>
+          <select id="settingRegion" class="profile-input"></select>
+        </label>
+
+        <label class="profile-field">
+          <span class="profile-field-label">Theme</span>
+          <span class="settings-help">Select your preferred theme</span>
+          <select id="settingTheme" class="profile-input">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+
+        <label class="profile-field">
+          <span class="profile-field-label">Safe search</span>
+          <span class="settings-help">Explicit content filtering</span>
+          <select id="settingSafeSearch" class="profile-input">
+            <option value="moderate">Moderate</option>
+            <option value="strict">Strict</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+
+      </form>
+    </section>
+  </div>
+
+  <script type="module" src="./assets/app.js?v=20260410w"></script>
 </body>
 </html>

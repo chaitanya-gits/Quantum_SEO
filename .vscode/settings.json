@@ -8,5 +8,8 @@
     "tests",
     "-p",
     "test_*.py"
-  ]
+  ],
+  "chat.tools.terminal.autoApprove": {
+    "docker cp": true
+  }
 }

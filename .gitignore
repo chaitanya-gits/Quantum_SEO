@@ -9,3 +9,5 @@ test-results
 .tools/
 __pycache__/
 *.pyc
+tmp/
+output/
