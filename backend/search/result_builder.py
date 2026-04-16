@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import html
 import re
 
 
 def clean_text(value: str) -> str:
-    return re.sub(r"\s+", " ", value or "").strip()
+    cleaned = html.unescape(value or "")
+    cleaned = re.sub(r"^\s{0,3}#{1,6}\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = cleaned.replace("##", " ")
+    cleaned = re.sub(r"Jump to content|From Wikipedia, the free encyclopedia", " ", cleaned, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", cleaned).strip()
 
 
 def summarize_result(result: dict) -> str:
