@@ -25,12 +25,7 @@ cd G:\Quantum_SEO\infra\docker
 docker-compose -p quantum_seo down
 ```
 
-## Deploying frontend to Cloudflare Pages
+## Deployment notes
 
-This repo is **not** a Node app, but Cloudflare Pages can still host the static frontend.
-
-- **Build command**: `npm run build`
-- **Output directory**: `dist`
-
-The build script copies `frontend/` into `dist/`.
+This repository includes both a static frontend and a Python backend. Choose a deployment platform that can run the backend services (FastAPI + OpenSearch + Postgres + Redis).
 

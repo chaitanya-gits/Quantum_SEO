@@ -751,7 +751,7 @@ async function reverseLookupLocation(latitude, longitude) {
       const payload = await response.json();
       topResult = payload.results?.[0] || null;
     } else {
-      // Cloudflare Pages is frontend-only (no /api). Use a CORS-friendly public reverse geocoder.
+      // If the backend reverse-geocode endpoint isn't available, fall back to a public reverse geocoder.
       const fallbackResponse = await fetch(
         `https://geocode.maps.co/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`,
       );
@@ -799,18 +799,7 @@ async function reverseLookupLocation(latitude, longitude) {
   }
 }
 
-function isBackendAvailableForAuth() {
-  // On Pages we only host static assets; backend endpoints are not present.
-  return !window.location.hostname.endsWith("pages.dev") && !window.location.hostname.includes("quair.pages.dev");
-}
-
-function routeToBackendOrExplain(path) {
-  if (!isBackendAvailableForAuth()) {
-    openAuthModal("login");
-    elements.authDescription.textContent =
-      "Authentication requires the backend server (Docker/FastAPI). This Cloudflare Pages site hosts only the frontend.";
-    return;
-  }
+function routeToBackend(path) {
   window.location.href = path;
 }
 
@@ -1868,7 +1857,7 @@ function renderAccountsList() {
       if (e.target.closest("[data-remove-email]")) return;
       const email = item.getAttribute("data-switch-email");
       if (email?.toLowerCase() !== currentEmail) {
-        routeToBackendOrExplain(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
+        routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
       }
     });
   }
@@ -2311,7 +2300,7 @@ async function handleLogout() {
 
   const fallbackAccount = getFallbackAccount(remainingAccounts, signedOutUser?.email);
   if (fallbackAccount?.email) {
-    routeToBackendOrExplain(`/api/auth/google/login?login_hint=${encodeURIComponent(fallbackAccount.email)}&expected_email=${encodeURIComponent(fallbackAccount.email)}`);
+    routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(fallbackAccount.email)}&expected_email=${encodeURIComponent(fallbackAccount.email)}`);
   }
 }
 
@@ -2336,7 +2325,7 @@ function bindEvents() {
     event.preventDefault();
     const email = elements.authEmailInput.value.trim();
     if (email) {
-      routeToBackendOrExplain(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
+      routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
     }
   });
 
@@ -2348,9 +2337,9 @@ function bindEvents() {
         const query = email
           ? `?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`
           : "";
-        routeToBackendOrExplain(`/api/auth/google/login${query}`);
+        routeToBackend(`/api/auth/google/login${query}`);
       }
-      if (provider === "X") { routeToBackendOrExplain("/api/auth/twitter/login"); }
+      if (provider === "X") { routeToBackend("/api/auth/twitter/login"); }
     });
   }
 
@@ -2408,7 +2397,7 @@ function bindEvents() {
   elements.addAccountButton.addEventListener("click", () => {
     elements.profileDropdown.hidden = true;
     elements.avatarButton.setAttribute("aria-expanded", "false");
-    routeToBackendOrExplain("/api/auth/google/login");
+    routeToBackend("/api/auth/google/login");
   });
 
   elements.profileForm.addEventListener("submit", (event) => {

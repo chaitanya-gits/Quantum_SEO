@@ -1,8 +1,0 @@
-{
-  "name": "quair-search",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "rm -rf dist && mkdir -p dist && cp -R frontend/* dist/ && echo 'Built static site into dist/'"
-  }
-}
