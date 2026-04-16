@@ -742,32 +742,48 @@ function stopLocationWatch() {
 
 async function reverseLookupLocation(latitude, longitude) {
   try {
+    let topResult = null;
     const response = await fetch(
       `/api/location/reverse?lat=${encodeURIComponent(latitude)}&lng=${encodeURIComponent(longitude)}`,
     );
 
-    if (!response.ok) {
-      throw new Error(`Reverse geocode failed with status ${response.status}`);
+    if (response.ok) {
+      const payload = await response.json();
+      topResult = payload.results?.[0] || null;
+    } else {
+      const fallbackResponse = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&addressdetails=1`,
+      );
+      if (fallbackResponse.ok) {
+        const fallbackPayload = await fallbackResponse.json();
+        const address = fallbackPayload.address || {};
+        topResult = {
+          areaName: address.suburb || address.neighbourhood || "",
+          cityName: address.city || address.town || address.village || "",
+          stateName: address.state || "",
+          countryName: address.country || "",
+          pincode: address.postcode || "",
+          formattedAddress: fallbackPayload.display_name || "",
+        };
+      }
     }
-
-    const payload = await response.json();
-    const topResult = payload.results?.[0];
 
     if (!topResult) {
       return false;
     }
 
-    const locality = [
-      topResult.areaName,
-      topResult.cityName,
-      topResult.stateName,
-      topResult.countryName,
-      topResult.pincode,
-    ]
-      .filter(Boolean)
-      .join(", ");
-
-    const locationLabel = locality || topResult.formattedAddress || "";
+    const placeName = (
+      topResult.areaName
+      || topResult.cityName
+      || topResult.stateName
+      || topResult.countryName
+      || topResult.formattedAddress
+      || ""
+    ).trim();
+    const pincode = String(topResult.pincode || "").trim();
+    const locationLabel = placeName
+      ? (pincode ? `${placeName} - ${pincode}` : placeName)
+      : "";
 
     if (!locationLabel) {
       return false;
