@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-import json
 
 from redis.asyncio import Redis
 
@@ -55,16 +54,3 @@ class RedisStorage:
 
     async def pop_frontier(self) -> str | None:
         return await self._redis.lpop(FRONTIER_KEY)
-
-    async def get_json(self, key: str) -> dict | list | None:
-        raw_value = await self._redis.get(key)
-        if not raw_value:
-            return None
-
-        try:
-            return json.loads(raw_value)
-        except json.JSONDecodeError:
-            return None
-
-    async def set_json(self, key: str, value: dict | list, ttl_seconds: int = 900) -> None:
-        await self._redis.set(key, json.dumps(value), ex=ttl_seconds)
