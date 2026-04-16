@@ -11,25 +11,12 @@ EMPTY_SEARCH_PAYLOAD = {
 }
 
 @router.get("/search")
-async def search(
-    request: Request,
-    q: str = Query("", alias="q"),
-    region: str = Query("", alias="region"),
-    hl: str = Query("", alias="hl"),
-    safe_search: str = Query("", alias="safe_search"),
-    context: str = Query("", alias="context"),
-) -> dict:
+async def search(request: Request, q: str = Query("", alias="q")) -> dict:
     query = q.strip()
     if not query:
         raise HTTPException(status_code=400, detail=EMPTY_SEARCH_PAYLOAD)
 
-    return await request.app.state.search_engine.search(
-        query,
-        region=region,
-        language=hl,
-        safe_search=safe_search,
-        attachment_context=context,
-    )
+    return await request.app.state.search_engine.search(query)
 
 @router.get("/index/status")
 async def index_status(request: Request) -> dict:

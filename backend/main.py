@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Iterable
 
 import httpx
 import uvicorn
@@ -15,9 +14,6 @@ from backend.api.health import router as health_router
 from backend.api.search import router as search_router
 from backend.api.suggest import router as suggest_router
 from backend.api.trending import router as trending_router
-from backend.api.auth import router as auth_router
-from backend.api.translate import router as translate_router
-from backend.api.attachments import router as attachments_router
 from backend.config import settings
 from backend.crawler.scheduler import CrawlScheduler
 from backend.runtime import build_frontier, open_runtime_services, require_redis, require_search_index
@@ -66,34 +62,6 @@ app.include_router(search_router, prefix="/api")
 app.include_router(suggest_router, prefix="/api")
 app.include_router(trending_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
-app.include_router(auth_router, prefix="/api")
-app.include_router(translate_router, prefix="/api")
-app.include_router(attachments_router, prefix="/api")
-
-
-def _iter_tracked_files() -> Iterable[Path]:
-    tracked_roots = (
-        Path("backend"),
-        Path(settings.frontend_dir),
-    )
-
-    for root in tracked_roots:
-        if not root.exists():
-            continue
-
-        for file_path in root.rglob("*"):
-            if file_path.is_file():
-                yield file_path
-
-
-@app.get("/api/dev/version")
-async def get_dev_version() -> JSONResponse:
-    latest_mtime_ns = 0
-
-    for file_path in _iter_tracked_files():
-        latest_mtime_ns = max(latest_mtime_ns, file_path.stat().st_mtime_ns)
-
-    return JSONResponse({"version": str(latest_mtime_ns)})
 
 
 @app.get("/api/location/reverse")
@@ -139,19 +107,4 @@ app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 if __name__ == "__main__":
-    ssl_keyfile = Path("/app/certs/key.pem")
-    ssl_certfile = Path("/app/certs/cert.pem")
-    
-    ssl_kwargs = {}
-    if ssl_keyfile.exists() and ssl_certfile.exists():
-        ssl_kwargs["ssl_keyfile"] = str(ssl_keyfile)
-        ssl_kwargs["ssl_certfile"] = str(ssl_certfile)
-    
-    uvicorn.run(
-        "backend.main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=True,
-        reload_dirs=["backend"],
-        **ssl_kwargs,
-    )
+    uvicorn.run("backend.main:app", host=settings.host, port=settings.port, reload=False)

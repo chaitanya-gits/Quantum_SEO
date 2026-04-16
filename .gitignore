@@ -1,33 +1,11 @@
-node_modules/
-dist/
+node_modules
+dist
 .env
 .env.*
 !.env.example
-playwright-report/
-test-results/
-.data/
+playwright-report
+test-results
+.data
 .tools/
 __pycache__/
 *.pyc
-*.pyo
-*.egg-info/
-.eggs/
-tmp/
-output/
-logs/
-*.log
-
-# SSL certificates (generate locally, never commit)
-infra/certs/
-*.pem
-*.key
-*.crt
-
-# IDE
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
