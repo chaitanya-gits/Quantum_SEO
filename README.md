@@ -25,6 +25,23 @@ cd G:\Quantum_SEO\infra\docker
 docker-compose -p quantum_seo down
 ```
 
+## Run locally without Docker
+
+Use this mode for frontend smoke testing on `localhost:3000` when Postgres, Redis, and OpenSearch are not running locally.
+
+```powershell
+cd G:\Quantum_SEO
+node scripts/local_dev_server.mjs
+Start-Process "http://localhost:3000"
+```
+
+Run the no-Docker smoke test:
+
+```powershell
+cd G:\Quantum_SEO
+node tests/local_dev_server.test.mjs
+```
+
 ## Deployment notes
 
 This repository includes both a static frontend and a Python backend. Choose a deployment platform that can run the backend services (FastAPI + OpenSearch + Postgres + Redis).

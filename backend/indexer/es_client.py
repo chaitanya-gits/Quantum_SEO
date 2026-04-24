@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from opensearchpy import OpenSearch
@@ -9,6 +10,22 @@ from backend.indexer.schema import search_index_mapping
 
 
 SEARCH_FIELDS = ["title^3", "summary^2", "body"]
+
+
+class DisabledSearchIndexClient:
+    index_name = "disabled"
+
+    async def ensure_index(self) -> None:
+        return None
+
+    async def healthcheck(self) -> bool:
+        return True
+
+    async def upsert_documents(self, documents: list[dict[str, Any]]) -> None:
+        return None
+
+    async def text_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
+        return []
 
 
 class SearchIndexClient:
@@ -31,7 +48,7 @@ class SearchIndexClient:
 
     async def healthcheck(self) -> bool:
         try:
-            self._client.cluster.health()
+            await asyncio.to_thread(self._client.cluster.health)
             return True
         except Exception:
             return False
@@ -46,9 +63,15 @@ class SearchIndexClient:
         self._client.indices.refresh(index=self.index_name)
 
     async def text_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
-        try:
-            await self.ensure_index()
-            response = self._client.search(
+        """Run a non-blocking OpenSearch query via ``asyncio.to_thread``."""
+
+        def _run() -> dict[str, Any]:
+            if not self._client.indices.exists(index=self.index_name):
+                self._client.indices.create(
+                    index=self.index_name,
+                    body=search_index_mapping(),
+                )
+            return self._client.search(
                 index=self.index_name,
                 body={
                     "size": limit,
@@ -61,6 +84,9 @@ class SearchIndexClient:
                     },
                 },
             )
+
+        try:
+            response = await asyncio.to_thread(_run)
         except Exception:
             return []
 

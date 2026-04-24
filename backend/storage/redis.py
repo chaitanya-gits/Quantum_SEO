@@ -7,6 +7,15 @@ from redis.asyncio import Redis
 
 TRENDING_KEY = "search:trending"
 FRONTIER_KEY = "crawl:frontier"
+BLOCKED_TRENDING_QUERIES = {
+    "dc current",
+    "how to make chicken biryani",
+    "world war 2",
+    "reciprocal rank fusion",
+    "access key secret access key akiav4nzkrnaravzpxhh t6h7pjmnbcqmcybeoq1iq1g0upexa3alapvy8lzt",
+    "what common mistakes should someone avoid when learning about world war 2?",
+    "untitled.png",
+}
 
 
 class RedisStorage:
@@ -28,14 +37,14 @@ class RedisStorage:
             return False
 
     async def record_query(self, query: str) -> None:
-        normalized_query = query.strip().lower()
+        normalized_query = _normalize_trending_query(query)
         if normalized_query:
             await self._redis.zincrby(TRENDING_KEY, 1, normalized_query)
 
     async def get_trending_queries(self, limit: int) -> list[str]:
         end_index = max(limit - 1, 0)
         items = await self._redis.zrevrange(TRENDING_KEY, 0, end_index)
-        return [item for item in items if item]
+        return [item for item in items if _normalize_trending_query(item)]
 
     async def get_suggestions(self, prefix: str, limit: int) -> list[str]:
         normalized_prefix = prefix.strip().lower()
@@ -54,3 +63,24 @@ class RedisStorage:
 
     async def pop_frontier(self) -> str | None:
         return await self._redis.lpop(FRONTIER_KEY)
+
+
+def _normalize_trending_query(value: str) -> str:
+    normalized = value.strip().lower()
+    if not normalized:
+        return ""
+    if normalized in BLOCKED_TRENDING_QUERIES:
+        return ""
+    if _looks_like_secret(normalized):
+        return ""
+    if normalized.endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg")):
+        return ""
+    return normalized
+
+
+def _looks_like_secret(value: str) -> bool:
+    if "secret access key" in value:
+        return True
+    if "access key" in value and "akia" in value:
+        return True
+    return False

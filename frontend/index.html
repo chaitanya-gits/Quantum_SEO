@@ -1,21 +1,21 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>[QuAir Search]</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234870ff'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(120 32 32)'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/assets/styles.css?v=20260416c" />
+  <link id="favicon" rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234870ff'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(120 32 32)'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20260424w41" />
 </head>
+
 <body>
   <main class="page">
     <header class="page-header">
       <nav class="auth-actions" aria-label="Account actions" hidden>
         <button class="auth-button auth-button-primary" type="button" data-auth-trigger="signup">
-          Sign up for more
-        </button>
-        <button class="auth-button auth-button-secondary" type="button" data-auth-trigger="login">
-          Log In
+          Sign up for more ↓
         </button>
       </nav>
 
@@ -23,7 +23,8 @@
         <a id="topBrandButton" class="top-brand" href="/" aria-label="QuAir Search">[QuAir Search]™</a>
 
         <div id="userProfile" class="user-profile" hidden>
-          <button id="avatarButton" class="avatar-button" type="button" aria-label="User menu" aria-expanded="false" aria-controls="profileDropdown">
+          <button id="avatarButton" class="avatar-button" type="button" aria-label="User menu" aria-expanded="false"
+            aria-controls="profileDropdown">
             <img id="avatarImage" class="avatar-image" src="" alt="" />
             <span id="avatarFallback" class="avatar-fallback" aria-hidden="true"></span>
           </button>
@@ -33,14 +34,20 @@
               <span id="profileEmail" class="profile-email"></span>
             </div>
             <hr class="profile-divider" />
-            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="overview">Profile overview</button>
-            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="settings">Settings</button>
+            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="overview">Profile
+              overview</button>
+            <button class="profile-menu-item" type="button" role="menuitem"
+              data-profile-panel="settings">Settings</button>
             <button id="logoutButton" class="profile-menu-item" type="button" role="menuitem">Sign out</button>
 
             <div id="accountsSection" class="dropdown-accounts-section">
               <div id="accountsList" class="accounts-list"></div>
               <button id="addAccountButton" class="dropdown-feature-item" type="button" role="menuitem">
-                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
                 <span class="dropdown-feature-text">Add another account</span>
               </button>
             </div>
@@ -49,25 +56,46 @@
               <span class="dropdown-more-label">More from QuAir Search</span>
 
               <button id="menuSearchHistory" class="dropdown-feature-item" type="button" role="menuitem">
-                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
                 <span class="dropdown-feature-text">Search history</span>
                 <span id="historyStatusLabel" class="dropdown-feature-badge">Saving</span>
               </button>
 
               <button id="menuSafeSearch" class="dropdown-feature-item" type="button" role="menuitem">
-                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span class="dropdown-feature-text">SafeSearch</span>
-                <span id="safeSearchStatusLabel" class="dropdown-feature-badge">Moderate</span>
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="13.5" cy="6.5" r=".5" />
+                  <circle cx="17.5" cy="10.5" r=".5" />
+                  <circle cx="8.5" cy="7.5" r=".5" />
+                  <circle cx="6.5" cy="12.5" r=".5" />
+                  <path
+                    d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6H19c2.2 0 4-1.8 4-4 0-5.5-4.5-10-10-10z" />
+                </svg>
+                <span class="dropdown-feature-text">Theme</span>
+                <span id="safeSearchStatusLabel" class="dropdown-feature-badge">System</span>
               </button>
 
               <button id="menuLanguage" class="dropdown-feature-item" type="button" role="menuitem">
-                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                <span class="dropdown-feature-text">Language</span>
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <path
+                    d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+                <span class="dropdown-feature-text">Display languages</span>
                 <span id="languageStatusLabel" class="dropdown-feature-badge">English</span>
               </button>
 
               <button id="menuBookmarks" class="dropdown-feature-item" type="button" role="menuitem">
-                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg>
                 <span class="dropdown-feature-text">Bookmarks</span>
               </button>
             </div>
@@ -85,14 +113,11 @@
       <div class="search-stage">
         <div class="search-card">
           <div class="search-shell">
-            <button
-              id="attachButton"
-              class="icon-button plus-button"
-              type="button"
-              aria-label="Upload image or file"
-            >
+            <button id="attachButton" class="icon-button plus-button" type="button" aria-label="Upload image or file">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l9.2-9.2a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.48-8.48"></path>
+                <path
+                  d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l9.2-9.2a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.48-8.48">
+                </path>
               </svg>
             </button>
 
@@ -103,24 +128,16 @@
 
             <div class="search-input-wrap">
               <div id="attachPreview" class="attach-preview" aria-live="polite"></div>
-              <input
-                id="query"
-                class="query-input"
-                type="text"
-                placeholder="Ask anything"
-                autocomplete="off"
-                aria-label="Search query"
-                aria-controls="suggestPanel"
-                aria-expanded="false"
-              />
+              <input id="query" class="query-input" type="text" placeholder="Ask anything" autocomplete="off"
+                aria-label="Search query" aria-controls="suggestPanel" aria-expanded="false" />
             </div>
 
-            <button
-              id="voiceButton"
-              class="icon-button"
-              type="button"
-              aria-label="Voice search"
-            >
+            <button id="clearButton" class="icon-button clear-button" type="button" aria-label="Clear search"
+              title="Clear">
+              ×
+            </button>
+
+            <button id="voiceButton" class="icon-button" type="button" aria-label="Voice search">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 4a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3z"></path>
                 <path d="M19 11a7 7 0 0 1-14 0"></path>
@@ -128,12 +145,7 @@
               </svg>
             </button>
 
-            <button
-              id="searchButton"
-              class="icon-button search-submit"
-              type="button"
-              aria-label="Run search"
-            >
+            <button id="searchButton" class="icon-button search-submit" type="button" aria-label="Run search">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 19V5"></path>
                 <path d="M5 12l7-7 7 7"></path>
@@ -141,12 +153,7 @@
             </button>
 
             <div id="voiceFeedback" class="voice-feedback" aria-live="polite">
-              <button
-                id="voiceStopButton"
-                class="voice-stop"
-                type="button"
-                aria-label="Stop recording"
-              >
+              <button id="voiceStopButton" class="voice-stop" type="button" aria-label="Stop recording">
                 <span class="voice-pulse" aria-hidden="true"></span>
                 <span>Listening</span>
               </button>
@@ -156,19 +163,16 @@
           <div id="attachMenu" class="attach-menu">
             <button id="uploadAttachmentButton" class="attach-option" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l9.2-9.2a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.48-8.48"></path>
+                <path
+                  d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l9.2-9.2a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.48-8.48">
+                </path>
               </svg>
               <span>Upload photos &amp; files</span>
             </button>
           </div>
 
-          <input
-            id="filePicker"
-            type="file"
-            hidden
-            multiple
-            accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.json,.ppt,.pptx"
-          />
+          <input id="filePicker" type="file" hidden multiple
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.json,.ppt,.pptx" />
 
           <div id="suggestPanel" class="suggest-panel" role="listbox"></div>
         </div>
@@ -185,6 +189,109 @@
         <button class="search-tab" type="button" data-search-tab="stocks">Stocks</button>
       </nav>
 
+      <div class="utilities-launcher">
+        <button id="utilitiesToggle" class="utilities-toggle" type="button" aria-expanded="false"
+          aria-controls="utilitiesPanel">
+          Utilities
+        </button>
+      </div>
+
+      <section id="utilitiesPanel" class="utilities-panel" aria-label="Utilities tools" hidden>
+        <div class="utilities-grid">
+
+          <article class="utility-card">
+            <div class="utility-card-head">
+              <h3>Calculator</h3>
+              <span>Quick math</span>
+            </div>
+            <form id="utilityCalculatorForm" class="utility-form">
+              <input id="utilityCalculatorInput" class="utility-input" type="text" placeholder="e.g. 18 / 3 + 42" />
+              <button class="utility-action" type="submit">Calculate</button>
+            </form>
+            <div id="utilityCalculatorOutput" class="utility-output">Enter a math expression like 18 / 3 + 42.</div>
+          </article>
+
+          <article class="utility-card">
+            <div class="utility-card-head">
+              <h3>Unit Converter</h3>
+              <span>Quick conversions</span>
+            </div>
+            <form id="utilityConverterForm" class="utility-form">
+              <input id="utilityConverterInput" class="utility-input" type="text" placeholder="e.g. 10 km to miles" />
+              <button class="utility-action" type="submit">Convert</button>
+            </form>
+            <div id="utilityConverterOutput" class="utility-output">Try values like 2 kg to lbs or 72 F to C.</div>
+          </article>
+
+          <article class="utility-card">
+            <div class="utility-card-head">
+              <h3>Time Tools</h3>
+              <span>Analog + digital</span>
+            </div>
+            <div class="utility-time-row">
+              <div class="utility-time-digital">
+                <div id="utilityTimeOutput" class="utility-output utility-output-strong">00:00:00</div>
+                <div id="utilityTimeMeta" class="utility-output utility-output-subtle">Loading local time</div>
+              </div>
+              <div class="utility-analog-clock" aria-hidden="true">
+                <div class="utility-analog-face">
+                  <div id="utilityAnalogHourHand" class="utility-analog-hand utility-analog-hour"></div>
+                  <div id="utilityAnalogMinuteHand" class="utility-analog-hand utility-analog-minute"></div>
+                  <div id="utilityAnalogSecondHand" class="utility-analog-hand utility-analog-second"></div>
+                  <div class="utility-analog-center"></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="utility-card">
+            <div class="utility-card-head">
+              <h3>Currency Converter</h3>
+              <span>Rate conversion</span>
+            </div>
+            <form id="utilityCurrencyForm" class="utility-form utility-currency-form">
+              <div class="utility-currency-field">
+                <label class="utility-currency-field-label" for="utilityCurrencyFrom">FROM</label>
+                <select id="utilityCurrencyFrom" class="utility-input utility-select" aria-label="From currency">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="INR">INR</option>
+                  <option value="JPY">JPY</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                  <option value="SGD">SGD</option>
+                  <option value="CNY">CNY</option>
+                  <option value="BRL">BRL</option>
+                </select>
+              </div>
+              <div class="utility-currency-field">
+                <label class="utility-currency-field-label" for="utilityCurrencyTo">TO</label>
+                <select id="utilityCurrencyTo" class="utility-input utility-select" aria-label="To currency">
+                  <option value="INR">INR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="JPY">JPY</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                  <option value="SGD">SGD</option>
+                  <option value="CNY">CNY</option>
+                  <option value="BRL">BRL</option>
+                </select>
+              </div>
+              <div class="utility-currency-field">
+                <label class="utility-currency-field-label" for="utilityCurrencyAmount">AMOUNT</label>
+                <input id="utilityCurrencyAmount" class="utility-input" type="number" step="any" placeholder="0.00" />
+              </div>
+              <button class="utility-action utility-action-wide" type="submit">Convert</button>
+            </form>
+            <div id="utilityCurrencyOutput" class="utility-output">Enter an amount to convert.</div>
+            <div id="utilityCurrencyMeta" class="utility-output utility-output-subtle"></div>
+          </article>
+        </div>
+      </section>
+
       <div id="searchingStatus" class="searching-status" aria-live="polite"></div>
     </section>
 
@@ -197,32 +304,20 @@
 
       <div class="results-head" id="resultsHead">
         <div id="statusPill" class="status-pill"></div>
-      </div>
-
-      <div id="searchFilters" class="search-filters" hidden>
-        <select id="filterDateRange" class="filter-select" title="Date range">
-          <option value="">Any time</option>
-          <option value="day">Past 24 hours</option>
-          <option value="week">Past week</option>
-          <option value="month">Past month</option>
-          <option value="year">Past year</option>
-        </select>
-        <input id="filterSite" class="filter-input" type="text" placeholder="Site: example.com" title="Filter by site" />
-        <select id="filterFileType" class="filter-select" title="File type">
-          <option value="">Any type</option>
-          <option value="pdf">PDF</option>
-          <option value="doc">DOC</option>
-          <option value="ppt">PPT</option>
-          <option value="xls">XLS</option>
-          <option value="csv">CSV</option>
-        </select>
-        <button id="applyFilters" class="filter-apply" type="button">Apply</button>
+        <div id="analyticsBoard" class="analytics-board" hidden></div>
       </div>
 
       <div id="instantAnswer" class="instant-answer" hidden></div>
 
-      <div id="relatedLabel" class="related-label">Suggested questions</div>
-      <div id="relatedRow" class="related-row"></div>
+      <div id="spellCorrection" class="spell-correction" hidden>
+        <p class="spell-correction-label">
+          These are results for <a id="spellCorrectedLink" class="spell-corrected-link" href="#"></a>
+        </p>
+        <p class="spell-correction-original">
+          Search instead for <a id="spellOriginalLink" class="spell-original-link" href="#"></a>
+        </p>
+      </div>
+
       <div id="results" class="results-list"></div>
       <div id="loadMoreWrap" class="load-more-wrap" hidden>
         <button id="loadMoreButton" class="load-more-button" type="button">Load more results</button>
@@ -230,20 +325,111 @@
       <div id="emptyState" class="empty-state"></div>
     </section>
 
-    <section class="location-card" aria-live="polite">
-      <div class="location-label">Live location</div>
-      <p id="locationText" class="location-text">Waiting for browser location permission.</p>
-      <div id="locationMeta" class="location-meta"></div>
+    <section class="weather-card" id="weatherCard" aria-live="polite">
+      <div class="weather-card-inner">
+        <!-- Location Row -->
+        <div class="wc-location-row">
+          <svg class="wc-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 10c0 6-9 13-9 13S3 16 3 10a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <p id="locationText" class="wc-location-text">Requesting your current location...</p>
+          <span id="weatherRefreshBtn" class="wc-refresh-btn" title="Refresh weather" role="button" tabindex="0"
+            aria-label="Refresh weather">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </span>
+        </div>
+
+        <!-- Weather Body (hidden until data loads) -->
+        <div id="weatherBody" class="wc-body" hidden>
+
+          <!-- Header: Weather title + day/time + right-side condition -->
+          <div class="wc-header">
+            <div class="wc-header-left">
+              <span class="wc-header-title">Weather</span>
+              <span class="wc-header-datetime" id="weatherDatetime"></span>
+            </div>
+            <div class="wc-header-condition" id="weatherHeaderCondition"></div>
+          </div>
+
+          <!-- Main: emoji + temp block + forecast -->
+          <div class="wc-main">
+            <div class="wc-emoji-wrap" id="weatherEmoji" aria-hidden="true">🌤️</div>
+            <div class="wc-temp-block">
+              <span class="wc-temp" id="weatherTemp">--°C</span>
+              <span class="wc-feels" id="weatherFeels">Feels like --°C</span>
+            </div>
+
+            <!-- Compact 4-Day Forecast moved here -->
+            <div class="wc-forecast-inline" id="weatherForecast" aria-label="4-day forecast"></div>
+          </div>
+
+          <div class="wc-stats">
+            <div class="wc-stat">
+              <svg class="wc-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path
+                  d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              <span class="wc-stat-label">Humidity</span>
+              <span class="wc-stat-value" id="weatherHumidity">--%</span>
+            </div>
+            <div class="wc-stat">
+              <svg class="wc-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path
+                  d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2" />
+              </svg>
+              <span class="wc-stat-label">Wind</span>
+              <span class="wc-stat-value" id="weatherWind">-- km/h</span>
+            </div>
+            <div class="wc-stat">
+              <svg class="wc-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path
+                  d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" />
+              </svg>
+              <span class="wc-stat-label">Rain</span>
+              <span class="wc-stat-value" id="weatherRain">-- mm</span>
+            </div>
+            <div class="wc-stat">
+              <svg class="wc-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+              <span class="wc-stat-label">UV Index</span>
+              <span class="wc-stat-value" id="weatherUV">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status/error text -->
+        <div id="locationMeta" class="wc-meta" hidden></div>
+      </div>
     </section>
 
     <footer class="page-footer">
       <p class="footer-tagline">[QuAir Search]™</p>
       <nav class="footer-links" aria-label="Footer navigation">
-        <a href="/about">About us</a>
-        <a href="/privacy">Privacy</a>
-        <a href="/terms">Terms</a>
-        <a href="/help">Help</a>
-        <a href="/feedback">Feedback</a>
+        <a href="/about" target="_blank" rel="noreferrer noopener">About us</a>
+        <a href="/privacy" target="_blank" rel="noreferrer noopener">Privacy</a>
+        <a href="/terms" target="_blank" rel="noreferrer noopener">Terms</a>
+        <a href="/help" target="_blank" rel="noreferrer noopener">Help</a>
+        <a href="/feedback" target="_blank" rel="noreferrer noopener">Feedback</a>
       </nav>
       <p class="footer-copy">&copy; 2026 QuAir Search.</p>
     </footer>
@@ -251,20 +437,15 @@
 
   <div id="authModal" class="auth-modal" aria-hidden="true">
     <div id="authBackdrop" class="auth-backdrop"></div>
-    <section
-      class="auth-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="authTitle"
-      aria-describedby="authDescription"
-    >
+    <section class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="authTitle"
+      aria-describedby="authDescription">
       <button id="authCloseButton" class="auth-close" type="button" aria-label="Close authentication dialog">
         ×
       </button>
 
       <div class="auth-dialog-header">
         <span id="authEyebrow" class="auth-eyebrow">QuAir account</span>
-        <h2 id="authTitle" class="auth-title">Log in or sign up</h2>
+        <h2 id="authTitle" class="auth-title">Create your account</h2>
         <p id="authDescription" class="auth-description"></p>
       </div>
 
@@ -272,21 +453,20 @@
         <button class="provider-button" type="button" data-provider="Google">
           <span class="provider-icon provider-icon-google" aria-hidden="true">
             <svg viewBox="0 0 24 24">
-              <path fill="#4285f4" d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.43z"></path>
-              <path fill="#34a853" d="M12 22c2.7 0 4.97-.89 6.62-2.34l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.06v2.59A10 10 0 0 0 12 22z"></path>
-              <path fill="#fbbc05" d="M6.41 13.99a6.02 6.02 0 0 1 0-3.98V7.42H3.06a10 10 0 0 0 0 9.16l3.35-2.59z"></path>
-              <path fill="#ea4335" d="M12 5.89c1.47 0 2.79.51 3.82 1.5l2.87-2.87C16.96 2.91 14.69 2 12 2a10 10 0 0 0-8.94 5.42l3.35 2.59C7.2 7.65 9.4 5.89 12 5.89z"></path>
+              <path fill="#4285f4"
+                d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.43z">
+              </path>
+              <path fill="#34a853"
+                d="M12 22c2.7 0 4.97-.89 6.62-2.34l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.06v2.59A10 10 0 0 0 12 22z">
+              </path>
+              <path fill="#fbbc05" d="M6.41 13.99a6.02 6.02 0 0 1 0-3.98V7.42H3.06a10 10 0 0 0 0 9.16l3.35-2.59z">
+              </path>
+              <path fill="#ea4335"
+                d="M12 5.89c1.47 0 2.79.51 3.82 1.5l2.87-2.87C16.96 2.91 14.69 2 12 2a10 10 0 0 0-8.94 5.42l3.35 2.59C7.2 7.65 9.4 5.89 12 5.89z">
+              </path>
             </svg>
           </span>
           <span id="googleLabel">Continue with Google</span>
-        </button>
-        <button class="provider-button" type="button" data-provider="X">
-          <span class="provider-icon provider-icon-x" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path fill="currentColor" d="M18.9 3h2.8l-6.2 7.1L22.8 21h-5.7l-4.4-6.7L6.9 21H4.1l6.6-7.6L1.7 3h5.8l4 6.2L18.9 3z"></path>
-            </svg>
-          </span>
-          <span id="xLabel">Continue with X</span>
         </button>
       </div>
 
@@ -299,25 +479,23 @@
       <form id="authForm" class="auth-form">
         <label class="auth-field">
           <span class="auth-field-label">Email address</span>
-          <input id="authEmailInput" class="auth-input" type="email" placeholder="you@example.com" autocomplete="email" />
+          <input id="authEmailInput" class="auth-input" type="email" placeholder="you@example.com"
+            autocomplete="email" />
         </label>
         <button id="authSubmitButton" class="auth-submit" type="submit">Continue</button>
       </form>
 
       <p class="auth-footnote">
-        By continuing, you agree to the Terms and Privacy Policy.
+        By continuing, you agree to the <a class="auth-footnote-link" href="/terms" target="_blank"
+          rel="noreferrer noopener">Terms</a> and <a class="auth-footnote-link" href="/privacy" target="_blank"
+          rel="noreferrer noopener">Privacy Policy</a>.
       </p>
     </section>
   </div>
 
   <div id="profileModal" class="profile-modal" aria-hidden="true">
     <div id="profileBackdrop" class="profile-backdrop"></div>
-    <section
-      class="profile-panel"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="profilePanelTitle"
-    >
+    <section class="profile-panel" role="dialog" aria-modal="true" aria-labelledby="profilePanelTitle">
       <button id="profileCloseButton" class="profile-close" type="button" aria-label="Close profile panel">
         ×
       </button>
@@ -330,12 +508,12 @@
 
       <div id="profileOverviewSection" class="profile-section">
         <div class="profile-summary-card">
-          <div class="profile-summary-avatar-wrap">
+          <div class="profile-summary-avatar-wrap" title="Double-click to change profile picture">
             <img id="profileSummaryAvatar" class="profile-summary-avatar" src="" alt="" />
             <span id="profileSummaryFallback" class="profile-summary-fallback" aria-hidden="true"></span>
           </div>
           <div class="profile-summary-content">
-            <strong id="profileSummaryName" class="profile-summary-name"></strong>
+            <div id="profileGreeting" class="profile-greeting" aria-hidden="true"></div>
             <span id="profileSummaryEmail" class="profile-summary-email"></span>
             <span id="profileSummaryProvider" class="profile-summary-provider"></span>
           </div>
@@ -348,9 +526,11 @@
           </label>
           <label class="profile-field">
             <span class="profile-field-label">Email or username</span>
-            <input id="profileHandleInput" class="profile-input" type="text" placeholder="you@example.com or @username" />
+            <input id="profileHandleInput" class="profile-input" type="text"
+              placeholder="you@example.com or @username" />
           </label>
-          <input id="profileAvatarInput" type="hidden" />
+          <input id="profileAvatarFileInput" type="file" hidden accept="image/*" />
+          <p class="profile-avatar-help">Double-click the profile photo above to upload a picture from your device.</p>
           <button class="profile-save-button" type="submit">Save profile</button>
         </form>
       </div>
@@ -358,29 +538,25 @@
       <form id="settingsForm" class="profile-form profile-section" hidden>
         <label class="profile-field">
           <span class="profile-field-label">Display language</span>
-          <span class="settings-help">For buttons, labels, hints, etc.</span>
           <select id="settingDisplayLanguage" class="profile-input"></select>
         </label>
 
         <label class="profile-field">
-          <span class="profile-field-label">Region</span>
-          <span class="settings-help">For your search results</span>
+          <span class="profile-field-label">Region results</span>
           <select id="settingRegion" class="profile-input"></select>
         </label>
 
         <label class="profile-field">
           <span class="profile-field-label">Theme</span>
-          <span class="settings-help">Select your preferred theme</span>
           <select id="settingTheme" class="profile-input">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
+            <option value="system">Default device</option>
+            <option value="light">Light theme</option>
+            <option value="dark">Dark theme</option>
           </select>
         </label>
 
         <label class="profile-field">
           <span class="profile-field-label">Safe search</span>
-          <span class="settings-help">Explicit content filtering</span>
           <select id="settingSafeSearch" class="profile-input">
             <option value="moderate">Moderate</option>
             <option value="strict">Strict</option>
@@ -388,6 +564,7 @@
           </select>
         </label>
 
+        <button class="profile-save-button" type="submit">Save settings</button>
       </form>
     </section>
   </div>
@@ -404,10 +581,16 @@
             <span class="history-toggle-label">Saving</span>
           </label>
           <button id="historyExportButton" class="history-export" type="button" title="Export history">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
           </button>
           <button id="historyDeleteAllButton" class="history-delete-all" type="button">Delete all</button>
-          <button id="historyCloseButton" class="history-close" type="button" aria-label="Close history">&times;</button>
+          <button id="historyCloseButton" class="history-close" type="button"
+            aria-label="Close history">&times;</button>
         </div>
       </div>
       <div id="historyList" class="history-list"></div>
@@ -420,7 +603,8 @@
       <div class="history-panel-header">
         <h2 id="bookmarksPanelTitle" class="history-panel-title">Bookmarks</h2>
         <div class="history-header-actions">
-          <button id="bookmarksCloseButton" class="history-close" type="button" aria-label="Close bookmarks">&times;</button>
+          <button id="bookmarksCloseButton" class="history-close" type="button"
+            aria-label="Close bookmarks">&times;</button>
         </div>
       </div>
       <div id="bookmarksList" class="history-list"></div>
@@ -437,6 +621,9 @@
     </section>
   </div>
 
-  <script type="module" src="/assets/app.js?v=20260416c"></script>
+  <div id="accountSwitchToast" class="account-switch-toast" aria-live="polite" hidden></div>
+
+  <script type="module" src="/assets/app.js?v=20260424w41"></script>
 </body>
+
 </html>

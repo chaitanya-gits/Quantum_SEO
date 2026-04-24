@@ -7,6 +7,8 @@ const bookmarksKey = "quair-bookmarks";
 const defaultSearchPlaceholder = "Search anything";
 const translationBatchSize = 60;
 
+const APP_BRAND_TITLE = "[QuAir Search]";
+
 const topLanguageOptions = [
   "en-US", "en-GB", "en-IN", "hi", "bn", "te", "mr", "ta", "ur", "gu", "kn",
   "ml", "pa", "or", "as", "es", "fr", "de", "it", "pt", "ru",
@@ -39,6 +41,67 @@ const translationCache = new Map();
 const translatableTextNodes = [];
 const translatableAttrTargets = [];
 
+const TAB_FAVICON_DEFAULT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234870ff'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(120 32 32)'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E";
+function buildTabSpinnerFrame(deg) {
+  const safeDeg = Number.isFinite(deg) ? deg : 0;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4870ff"/>
+          <stop offset="1" stop-color="#1a73e8"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="white"/>
+      <g transform="rotate(${safeDeg} 32 32)">
+        <circle cx="32" cy="32" r="20" fill="none" stroke="#dfe6ff" stroke-width="6"/>
+        <path d="M52 32a20 20 0 0 0-20-20" fill="none" stroke="url(#g)" stroke-linecap="round" stroke-width="6"/>
+      </g>
+    </svg>
+  `.trim();
+
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+const TAB_FAVICON_LOADING_FRAMES = Array.from({ length: 12 }, (_, i) => buildTabSpinnerFrame(i * 30));
+let tabFaviconSpinnerTimer = null;
+let tabFaviconSpinnerFrame = 0;
+
+function getTabFaviconLink() {
+  return document.querySelector("link#favicon") || document.querySelector("link[rel~='icon']");
+}
+
+function setTabFavicon(href) {
+  const link = getTabFaviconLink();
+  if (!link) return;
+  if (link.getAttribute("href") === href) return;
+  link.setAttribute("href", href);
+}
+
+function setTabTitleForQuery(query) {
+  const trimmed = String(query || "").trim();
+  document.title = trimmed ? `${trimmed} - ${APP_BRAND_TITLE}` : APP_BRAND_TITLE;
+}
+
+function setTabLoadingState(isLoading, query) {
+  setTabTitleForQuery(query);
+  if (tabFaviconSpinnerTimer) {
+    clearInterval(tabFaviconSpinnerTimer);
+    tabFaviconSpinnerTimer = null;
+  }
+
+  if (isLoading) {
+    tabFaviconSpinnerFrame = 0;
+    setTabFavicon(TAB_FAVICON_LOADING_FRAMES[tabFaviconSpinnerFrame]);
+    tabFaviconSpinnerTimer = window.setInterval(() => {
+      tabFaviconSpinnerFrame = (tabFaviconSpinnerFrame + 1) % TAB_FAVICON_LOADING_FRAMES.length;
+      setTabFavicon(TAB_FAVICON_LOADING_FRAMES[tabFaviconSpinnerFrame]);
+    }, 80);
+  } else {
+    setTabFavicon(TAB_FAVICON_DEFAULT);
+  }
+}
+
 const elements = {
   answerText: document.getElementById("answerText"),
   answerWrap: document.getElementById("aiAnswer"),
@@ -59,7 +122,7 @@ const elements = {
   imagePreviewImage: document.getElementById("imagePreviewImage"),
   imagePreviewModal: document.getElementById("imagePreviewModal"),
   logoutButton: document.getElementById("logoutButton"),
-  profileAvatarInput: document.getElementById("profileAvatarInput"),
+  profileAvatarFileInput: document.getElementById("profileAvatarFileInput"),
   profileBackdrop: document.getElementById("profileBackdrop"),
   profileCloseButton: document.getElementById("profileCloseButton"),
   profileDropdown: document.getElementById("profileDropdown"),
@@ -76,6 +139,7 @@ const elements = {
   profileSummaryEmail: document.getElementById("profileSummaryEmail"),
   profileSummaryFallback: document.getElementById("profileSummaryFallback"),
   profileSummaryName: document.getElementById("profileSummaryName"),
+  profileGreeting: document.getElementById("profileGreeting"),
   profileSummaryProvider: document.getElementById("profileSummaryProvider"),
   settingDisplayLanguage: document.getElementById("settingDisplayLanguage"),
   settingRegion: document.getElementById("settingRegion"),
@@ -98,11 +162,6 @@ const elements = {
   addAccountButton: document.getElementById("addAccountButton"),
   topBrandButton: document.getElementById("topBrandButton"),
   userProfile: document.getElementById("userProfile"),
-  filterDateRange: document.getElementById("filterDateRange"),
-  filterSite: document.getElementById("filterSite"),
-  filterFileType: document.getElementById("filterFileType"),
-  applyFilters: document.getElementById("applyFilters"),
-  searchFilters: document.getElementById("searchFilters"),
   instantAnswer: document.getElementById("instantAnswer"),
   loadMoreWrap: document.getElementById("loadMoreWrap"),
   loadMoreButton: document.getElementById("loadMoreButton"),
@@ -112,6 +171,26 @@ const elements = {
   bookmarksBackdrop: document.getElementById("bookmarksBackdrop"),
   bookmarksCloseButton: document.getElementById("bookmarksCloseButton"),
   bookmarksList: document.getElementById("bookmarksList"),
+  utilitiesToggle: document.getElementById("utilitiesToggle"),
+  utilitiesPanel: document.getElementById("utilitiesPanel"),
+  utilityCalculatorForm: document.getElementById("utilityCalculatorForm"),
+  utilityCalculatorInput: document.getElementById("utilityCalculatorInput"),
+  utilityCalculatorOutput: document.getElementById("utilityCalculatorOutput"),
+  utilityConverterForm: document.getElementById("utilityConverterForm"),
+  utilityConverterInput: document.getElementById("utilityConverterInput"),
+  utilityConverterOutput: document.getElementById("utilityConverterOutput"),
+  utilityTimeOutput: document.getElementById("utilityTimeOutput"),
+  utilityTimeMeta: document.getElementById("utilityTimeMeta"),
+  utilityAnalogHourHand: document.getElementById("utilityAnalogHourHand"),
+  utilityAnalogMinuteHand: document.getElementById("utilityAnalogMinuteHand"),
+  utilityAnalogSecondHand: document.getElementById("utilityAnalogSecondHand"),
+
+  utilityCurrencyForm: document.getElementById("utilityCurrencyForm"),
+  utilityCurrencyAmount: document.getElementById("utilityCurrencyAmount"),
+  utilityCurrencyFrom: document.getElementById("utilityCurrencyFrom"),
+  utilityCurrencyTo: document.getElementById("utilityCurrencyTo"),
+  utilityCurrencyOutput: document.getElementById("utilityCurrencyOutput"),
+  utilityCurrencyMeta: document.getElementById("utilityCurrencyMeta"),
   attachButton: document.getElementById("attachButton"),
   attachPreview: document.getElementById("attachPreview"),
   attachMenu: document.getElementById("attachMenu"),
@@ -120,16 +199,34 @@ const elements = {
   filePicker: document.getElementById("filePicker"),
   locationMeta: document.getElementById("locationMeta"),
   locationText: document.getElementById("locationText"),
+  weatherCard: document.getElementById("weatherCard"),
+  weatherBody: document.getElementById("weatherBody"),
+  weatherEmoji: document.getElementById("weatherEmoji"),
+  weatherTemp: document.getElementById("weatherTemp"),
+  weatherFeels: document.getElementById("weatherFeels"),
+  weatherTime: document.getElementById("weatherTime"),
+  weatherDatetime: document.getElementById("weatherDatetime"),
+  weatherHeaderCondition: document.getElementById("weatherHeaderCondition"),
+  weatherForecast: document.getElementById("weatherForecast"),
+  weatherCondition: document.getElementById("weatherCondition"),
+  weatherHumidity: document.getElementById("weatherHumidity"),
+  weatherWind: document.getElementById("weatherWind"),
+  weatherRain: document.getElementById("weatherRain"),
+  weatherUV: document.getElementById("weatherUV"),
+  weatherRefreshBtn: document.getElementById("weatherRefreshBtn"),
   queryInput: document.getElementById("query"),
-  relatedLabel: document.getElementById("relatedLabel"),
-  relatedRow: document.getElementById("relatedRow"),
+  clearButton: document.getElementById("clearButton"),
   results: document.getElementById("results"),
   resultsHead: document.getElementById("resultsHead"),
+  analyticsBoard: document.getElementById("analyticsBoard"),
   searchTabs: Array.from(document.querySelectorAll("[data-search-tab]")),
   searchButton: document.getElementById("searchButton"),
   searchShell: document.querySelector(".search-shell"),
   statusPill: document.getElementById("statusPill"),
   searchingStatus: document.getElementById("searchingStatus"),
+  spellCorrection: document.getElementById("spellCorrection"),
+  spellCorrectedLink: document.getElementById("spellCorrectedLink"),
+  spellOriginalLink: document.getElementById("spellOriginalLink"),
   suggestPanel: document.getElementById("suggestPanel"),
   uploadAttachmentButton: document.getElementById("uploadAttachmentButton"),
   voiceButton: document.getElementById("voiceButton"),
@@ -158,14 +255,31 @@ const state = {
   voicePreviousValue: "",
   lastSearchPayload: null,
   displayedResultCount: 0,
-  resultPageSize: 8,
+  resultPageSize: 10,
   previewHoverTimer: null,
+  suggestRequestToken: 0,
+  suggestTimer: null,
+  utilityTimeTimer: null,
+  weatherFetchedForCoords: null,
 };
 
 const devRefreshState = {
   currentVersion: null,
-  isEnabled: ["localhost", "127.0.0.1"].includes(window.location.hostname),
+  isEnabled: false,
   timerId: null,
+};
+
+const FALLBACK_FX_USD_RATES = {
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  INR: 83.5,
+  JPY: 155,
+  CAD: 1.37,
+  AUD: 1.52,
+  SGD: 1.35,
+  CNY: 7.24,
+  BRL: 5.12,
 };
 
 function getUserHistoryKey() {
@@ -176,6 +290,10 @@ function getUserHistoryKey() {
 }
 
 function isHistorySavingEnabled() {
+  // Only save history for authenticated users.
+  if (!state.profileUser) {
+    return false;
+  }
   const raw = localStorage.getItem(historySavingKey);
   return raw === null ? true : raw === "true";
 }
@@ -252,32 +370,51 @@ function removeHistoryItem(value) {
   openDropdown(elements.queryInput.value);
 }
 
+function getUserBookmarksKey() {
+  const user = state.profileUser;
+  if (!user) return null;
+  const id = String(user.id || user.email || user.username || "").trim().toLowerCase();
+  return id ? `${bookmarksKey}:${user.provider || "unknown"}:${id}` : null;
+}
+
 function readBookmarks() {
+  const key = getUserBookmarksKey();
+  if (!key) return [];
   try {
-    return JSON.parse(localStorage.getItem(bookmarksKey) || "[]");
+    return JSON.parse(localStorage.getItem(key) || "[]");
   } catch { return []; }
 }
 
 function writeBookmarks(items) {
-  localStorage.setItem(bookmarksKey, JSON.stringify(items.slice(0, 200)));
+  const key = getUserBookmarksKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(items.slice(0, 200)));
 }
 
 function addBookmark(url, title, snippet) {
+  if (!state.profileUser) return false;
   const existing = readBookmarks();
-  if (existing.some((b) => b.url === url)) return;
+  if (existing.some((b) => b.url === url)) return true;
   existing.unshift({ url, title, snippet: snippet || "", timestamp: Date.now() });
   writeBookmarks(existing);
+  return true;
 }
 
 function removeBookmark(url) {
+  if (!state.profileUser) return;
   writeBookmarks(readBookmarks().filter((b) => b.url !== url));
 }
 
 function isBookmarked(url) {
+  if (!state.profileUser) return false;
   return readBookmarks().some((b) => b.url === url);
 }
 
 function renderBookmarksList() {
+  if (!state.profileUser) {
+    elements.bookmarksList.innerHTML = '<div class="history-empty">Sign in to save and view your bookmarks.</div>';
+    return;
+  }
   const bookmarks = readBookmarks();
   if (!bookmarks.length) {
     elements.bookmarksList.innerHTML = '<div class="history-empty">No bookmarks yet. Click the bookmark icon on search results to save them.</div>';
@@ -308,6 +445,7 @@ function renderBookmarksList() {
 }
 
 function openBookmarksModal() {
+  closeHistoryModal();
   renderBookmarksList();
   elements.bookmarksModal.classList.add("is-open");
   elements.bookmarksModal.setAttribute("aria-hidden", "false");
@@ -345,25 +483,7 @@ function exportHistoryAs(format) {
 }
 
 function tryInstantAnswer(query) {
-  const trimmed = query.trim();
-  const mathResult = tryCalculator(trimmed);
-  if (mathResult) {
-    elements.instantAnswer.hidden = false;
-    elements.instantAnswer.innerHTML = `
-      <span class="instant-answer-label">Calculator</span>
-      <div class="instant-answer-expression">${escapeHtml(trimmed)}</div>
-      <div class="instant-answer-value">${escapeHtml(mathResult)}</div>`;
-    return true;
-  }
-  const unitResult = tryUnitConvert(trimmed);
-  if (unitResult) {
-    elements.instantAnswer.hidden = false;
-    elements.instantAnswer.innerHTML = `
-      <span class="instant-answer-label">Unit Converter</span>
-      <div class="instant-answer-expression">${escapeHtml(trimmed)}</div>
-      <div class="instant-answer-value">${escapeHtml(unitResult)}</div>`;
-    return true;
-  }
+  // Disabled permanently as per user request
   elements.instantAnswer.hidden = true;
   return false;
 }
@@ -413,6 +533,129 @@ function tryUnitConvert(query) {
   return null;
 }
 
+function setUtilitiesOpen(isOpen) {
+  if (!elements.utilitiesPanel || !elements.utilitiesToggle) {
+    return;
+  }
+  elements.utilitiesPanel.hidden = false;
+  elements.utilitiesPanel.classList.toggle("is-open", isOpen);
+  elements.utilitiesToggle.setAttribute("aria-expanded", String(isOpen));
+  if (!isOpen) {
+    window.setTimeout(() => {
+      if (!elements.utilitiesPanel.classList.contains("is-open")) {
+        elements.utilitiesPanel.hidden = true;
+      }
+    }, 260);
+  }
+}
+
+function updateUtilityTime() {
+  if (!elements.utilityTimeOutput || !elements.utilityTimeMeta) {
+    return;
+  }
+  const now = new Date();
+  elements.utilityTimeOutput.textContent = now.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  elements.utilityTimeMeta.textContent = now.toLocaleDateString([], {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  if (
+    elements.utilityAnalogHourHand
+    && elements.utilityAnalogMinuteHand
+    && elements.utilityAnalogSecondHand
+  ) {
+    const ms = now.getMilliseconds();
+    const second = now.getSeconds() + ms / 1000;
+    const minute = now.getMinutes() + second / 60;
+    const hour = (now.getHours() % 12) + minute / 60;
+
+    const secondDeg = second * 6; // 360 / 60
+    const minuteDeg = minute * 6; // 360 / 60
+    const hourDeg = hour * 30; // 360 / 12
+
+    elements.utilityAnalogSecondHand.style.setProperty("--rot", `${secondDeg}deg`);
+    elements.utilityAnalogMinuteHand.style.setProperty("--rot", `${minuteDeg}deg`);
+    elements.utilityAnalogHourHand.style.setProperty("--rot", `${hourDeg}deg`);
+  }
+}
+
+async function fetchFxRate(from, to) {
+  if (from === to) return { rate: 1, source: "same currency" };
+
+  const liveRate = await fetchLiveFxRate(from, to);
+  if (Number.isFinite(liveRate) && liveRate > 0) {
+    return { rate: liveRate, source: "live rate" };
+  }
+
+  const fallbackRate = getFallbackFxRate(from, to);
+  if (Number.isFinite(fallbackRate) && fallbackRate > 0) {
+    return { rate: fallbackRate, source: "offline estimate" };
+  }
+
+  throw new Error("FX rate not available.");
+}
+
+async function fetchLiveFxRate(from, to) {
+  const endpoints = [
+    `https://api.exchangerate.host/latest?base=${encodeURIComponent(from)}&symbols=${encodeURIComponent(to)}`,
+    `https://api.frankfurter.app/latest?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url, { cache: "no-store" });
+      if (!resp.ok) {
+        continue;
+      }
+
+      const payload = await resp.json();
+      const rate = payload?.rates?.[to];
+      if (Number.isFinite(rate)) {
+        return rate;
+      }
+    } catch {
+      // Try the next endpoint before falling back to local estimates.
+    }
+  }
+
+  return Number.NaN;
+}
+
+function getFallbackFxRate(from, to) {
+  const fromRate = FALLBACK_FX_USD_RATES[from];
+  const toRate = FALLBACK_FX_USD_RATES[to];
+
+  if (!Number.isFinite(fromRate) || !Number.isFinite(toRate) || fromRate <= 0) {
+    return Number.NaN;
+  }
+
+  return toRate / fromRate;
+}
+
+function setCurrencyUi(resultText, metaText) {
+  if (elements.utilityCurrencyOutput) elements.utilityCurrencyOutput.textContent = resultText;
+  if (elements.utilityCurrencyMeta) elements.utilityCurrencyMeta.textContent = metaText || "";
+}
+
+function resetCurrencyManualRateMessage() {
+  const output = elements.utilityCurrencyOutput;
+  if (!output) {
+    return;
+  }
+
+  const normalizedText = output.textContent.toLowerCase();
+  if (normalizedText.includes("manual") && normalizedText.includes("rate")) {
+    setCurrencyUi("Enter an amount to convert.", "");
+  }
+}
+
 function removeHistoryEntry(entryId) {
   const entries = readHistoryEntries().filter((e) => e.id !== entryId);
   writeHistoryEntries(entries);
@@ -441,7 +684,7 @@ function setSearchStatus(message) {
 
   elements.statusPill.textContent = text;
   elements.statusPill.classList.toggle("is-visible", Boolean(text));
-  elements.resultsHead.style.display = text ? "flex" : "none";
+  elements.resultsHead.style.display = text || !elements.analyticsBoard?.hidden ? "flex" : "none";
 }
 
 function setSearchingStatus(message) {
@@ -457,6 +700,12 @@ function setSearchLoading(isLoading, message) {
   elements.searchShell.classList.toggle("is-loading", isLoading);
   elements.searchButton.disabled = isLoading;
   elements.queryInput.disabled = false;
+  setTabLoadingState(isLoading, state.lastSubmittedQuery || elements.queryInput.value);
+
+  if (elements.clearButton) {
+    const hasText = Boolean(elements.queryInput.value.trim());
+    elements.clearButton.classList.toggle("is-visible", hasText && !isLoading);
+  }
 
   if (isLoading) {
     setSearchingStatus(message || "Searching live web...");
@@ -590,141 +839,267 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function splitIntoSentences(text) {
+function stripMarkdown(text) {
   return (text || "")
+    .replace(/^#{1,6}\s*/gm, "")        // heading hashes
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1")  // bold/italic
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")  // inline code
+    .replace(/^\s*[\-\*>]\s+/gm, "")   // list bullets / blockquotes
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links
+    .replace(/!\[.*?\]\(.*?\)/g, "")    // images
+    .replace(/_{1,2}([^_]+)_{1,2}/g, "$1") // underscores
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function splitIntoSentences(text) {
+  return stripMarkdown(text || "")
     .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .map((sentence) => sentence.replace(/^#{1,6}\s*/g, ""))
-    .map((sentence) => sentence.replace(/\s+#\s+/g, " "))
-    .map((sentence) => sentence.replace(/\s{2,}/g, " ").trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 }
 
-function formatOverviewHtml(query, message, sources) {
-  const cleanedMessage = (message || "").trim();
+// ─── Social platform registry ───────────────────────────────────────────────
+const SOCIAL_PLATFORMS = [
+  { key: "youtube.com",     name: "YouTube",     color: "#FF0000" },
+  { key: "instagram.com",   name: "Instagram",   color: "#E1306C" },
+  { key: "twitter.com",     name: "Twitter",     color: "#1DA1F2" },
+  { key: "x.com",           name: "X",           color: "#000000" },
+  { key: "facebook.com",    name: "Facebook",    color: "#1877F2" },
+  { key: "linkedin.com",    name: "LinkedIn",    color: "#0A66C2" },
+  { key: "tiktok.com",      name: "TikTok",      color: "#010101" },
+  { key: "reddit.com",      name: "Reddit",      color: "#FF4500" },
+  { key: "pinterest.com",   name: "Pinterest",   color: "#E60023" },
+  { key: "snapchat.com",    name: "Snapchat",    color: "#FFFC00" },
+  { key: "telegram.org",    name: "Telegram",    color: "#2AABEE" },
+  { key: "t.me",            name: "Telegram",    color: "#2AABEE" },
+  { key: "whatsapp.com",    name: "WhatsApp",    color: "#25D366" },
+  { key: "twitch.tv",       name: "Twitch",      color: "#9146FF" },
+  { key: "github.com",      name: "GitHub",      color: "#181717" },
+  { key: "quora.com",       name: "Quora",       color: "#B92B27" },
+  { key: "medium.com",      name: "Medium",      color: "#000000" },
+  { key: "tumblr.com",      name: "Tumblr",      color: "#35465C" },
+  { key: "discord.com",     name: "Discord",     color: "#5865F2" },
+  { key: "spotify.com",     name: "Spotify",     color: "#1DB954" },
+  { key: "soundcloud.com",  name: "SoundCloud",  color: "#FF5500" },
+  { key: "imdb.com",        name: "IMDb",        color: "#F5C518" },
+];
 
-  if (!cleanedMessage) {
-    return "";
+function detectSocialProfiles(sources, query = "") {
+  const seen = new Set();
+  const profiles = [];
+  for (const source of (sources || [])) {
+    let host = "";
+    try { host = new URL(source.url).hostname.replace(/^www\./, ""); } catch { continue; }
+    const platform = SOCIAL_PLATFORMS.find((p) => host === p.key || host.endsWith("." + p.key));
+    if (platform && !seen.has(platform.name)) {
+      seen.add(platform.name);
+      profiles.push({ ...platform, url: source.url, host });
+    }
   }
 
-  const sentences = splitIntoSentences(cleanedMessage);
-  const summaryText = sentences.slice(0, 2).join(" ") || cleanedMessage;
-
-  const pointItems = (sentences.length > 1 ? sentences : [cleanedMessage])
-    .slice(0, 4)
-    .map((sentence) => `<li>${escapeHtml(sentence)}</li>`)
-    .join("");
-
-  const tableRows = (sources || [])
-    .slice(0, 10)
-    .map((source, index) => {
-      let host = source.url;
-
-      try {
-        host = new URL(source.url).hostname.replace(/^www\./, "");
-      } catch {
-        host = source.url;
+  // Force generic fallback profiles if they weren't found in search results
+  if (query) {
+    const fallbacks = [
+      { key: "linkedin.com", name: "LinkedIn", searchUrl: `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(query)}` },
+      { key: "twitter.com", name: "X", searchUrl: `https://twitter.com/search?q=${encodeURIComponent(query)}` },
+      { key: "facebook.com", name: "Facebook", searchUrl: `https://www.facebook.com/search/top?q=${encodeURIComponent(query)}` },
+      { key: "instagram.com", name: "Instagram", searchUrl: `https://www.instagram.com/explore/tags/${encodeURIComponent(query.replace(/\s+/g, ""))}/` }
+    ];
+    for (const fb of fallbacks) {
+      if (!seen.has(fb.name)) {
+        seen.add(fb.name);
+        profiles.push({ ...fb, url: fb.searchUrl, host: fb.key });
       }
+    }
+  }
 
-      return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>
-            <a href="${escapeHtml(source.url)}" rel="noreferrer noopener">
-              ${escapeHtml(source.title || "Untitled source")}
-            </a>
-          </td>
-          <td>${escapeHtml(host)}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  return profiles;
+}
+
+function getStoryHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+}
+
+function formatRelativeDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const diffMs = Date.now() - d.getTime();
+    const hrs = Math.floor(diffMs / 3600000);
+    if (hrs < 1) return "Just now";
+    if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch { return dateStr; }
+}
+
+// Google-News-style card: full-cover image + source + title + time
+function buildNewsCard(source) {
+  const host = getStoryHost(source.url);
+  const favicon = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
+  const timeStr = formatRelativeDate(source.published_date);
+
+  // Image priority: 1) native image from search result, 2) Microlink og:image
+  const displayImage = source.image
+    ? escapeHtml(source.image)
+    : `https://api.microlink.io?url=${encodeURIComponent(source.url)}&embed=image.url`;
+
+  // On image error: try favicon as cover, then a solid branded fallback tile
+  const imgBlock = `
+    <div class="tsn-img-wrap">
+      <img class="tsn-img" src="${displayImage}" alt=""
+        loading="eager"
+        onerror="
+          if(!this.dataset.triedFavicon){
+            this.dataset.triedFavicon=1;
+            this.src='${favicon}';
+          } else {
+            this.style.display='none';
+            this.parentNode.querySelector('.tsn-fallback-tile').style.display='flex';
+          }
+        " />
+      <div class="tsn-fallback-tile" style="display:none;background:linear-gradient(135deg,#1e3a5f,#4870ff);color:#fff;font-size:1.3rem;font-weight:700;align-items:center;justify-content:center;width:100%;height:100%;">
+        <img src="${favicon}" style="width:40px;height:40px;border-radius:8px;" onerror="this.style.display='none'" />
+      </div>
+    </div>`;
 
   return `
-    <section class="overview-section">
-      <h3 class="overview-heading">Summary</h3>
-      <p class="overview-text">${escapeHtml(summaryText)}</p>
-    </section>
-    <section class="overview-section">
-      <h3 class="overview-heading">Key Points</h3>
-      <ol class="overview-list">${pointItems}</ol>
-    </section>
-    ${
-      tableRows
-        ? `
-          <section class="overview-section">
-            <h3 class="overview-heading">Top Sources</h3>
-            <table class="overview-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Source</th>
-                  <th>Domain</th>
-                </tr>
-              </thead>
-              <tbody>${tableRows}</tbody>
-            </table>
-          </section>
-        `
-        : ""
-    }
-    <section class="overview-section">
-      <h3 class="overview-heading">Query</h3>
-      <p class="overview-text"><strong>${escapeHtml(query)}</strong></p>
-    </section>
-  `;
+    <a class="tsn-card" href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer noopener">
+      ${imgBlock}
+      <div class="tsn-body">
+        <div class="ts-source-row">
+          <img class="ts-favicon" src="${favicon}" alt="" onerror="this.style.display='none'" />
+          <span class="ts-source-name">${escapeHtml(host)}</span>
+        </div>
+        <p class="tsn-title">${escapeHtml(source.title || 'Untitled')}</p>
+        ${timeStr ? `<span class="ts-time">${escapeHtml(timeStr)}</span>` : ''}
+      </div>
+    </a>`;
 }
+
+function formatOverviewHtml(query, message, sources) {
+  const cleanedMessage = stripMarkdown((message || "").trim());
+
+  // ── About: truncate to exactly 4-5 lines (sentences) ─────────────────────
+  const sentences = splitIntoSentences(cleanedMessage);
+  const summaryText = sentences.slice(0, 5).join(" ") || cleanedMessage;
+
+  // ── Source helpers ────────────────────────────────────────────────────────
+  const validSources = (sources || []).filter((s) => s.url);
+  const socialDomains = ["facebook.com","instagram.com","twitter.com","x.com",
+    "youtube.com","linkedin.com","tiktok.com","reddit.com","pinterest.com",
+    "snapchat.com","telegram.org","whatsapp.com"];
+  const isSocial = (url) => { try { const h = new URL(url).hostname.replace(/^www\./,""); return socialDomains.some(d => h===d||h.endsWith("."+d)); } catch { return false; } };
+  const isWiki   = (url) => /wikipedia\.org/i.test(url);
+
+  // ── Region-aware news domain priority ─────────────────────────────────────
+  const userRegion = (localStorage.getItem("quair_region") || "GLOBAL").toUpperCase();
+  const REGIONAL_NEWS = {
+    IN:  ["ndtv.com","timesofindia.indiatimes.com","thehindu.com","indiatoday.in","hindustantimes.com","news18.com","indianexpress.com","scroll.in","thewire.in","livemint.com"],
+    US:  ["cnn.com","foxnews.com","nbcnews.com","nytimes.com","washingtonpost.com","usatoday.com","abcnews.go.com","msnbc.com","cbsnews.com","npr.org"],
+    GB:  ["bbc.com","bbc.co.uk","theguardian.com","skynews.com","telegraph.co.uk","independent.co.uk","metro.co.uk","thetimes.co.uk"],
+    GLOBAL: ["bbc.com","reuters.com","aljazeera.com","bloomberg.com","apnews.com","france24.com","dw.com","cnn.com","theguardian.com","ndtv.com"]
+  };
+  const priorityDomains = REGIONAL_NEWS[userRegion] || REGIONAL_NEWS.GLOBAL;
+  const globalNewsDomains = ["bbc.com","bbc.co.uk","cnn.com","nytimes.com","reuters.com","bloomberg.com","forbes.com",
+    "theguardian.com","wsj.com","cnbc.com","ndtv.com","indiatoday.in","timesofindia","thehindu",
+    "aljazeera","foxnews.com","news.yahoo.com","businessinsider.com","washingtonpost.com",
+    "npr.org","usatoday.com","news18.com","hindustantimes.com","cbsnews.com","nbcnews.com",
+    "abcnews.go.com","msnbc.com","skynews.com","france24.com","dw.com","rt.com",
+    "apnews.com","scroll.in","thewire.in","livemint.com","indianexpress.com"];
+
+  const isNewsMedia = (url) => {
+    try {
+      const h = new URL(url).hostname.replace(/^www\./,"");
+      return globalNewsDomains.some(d => h===d || h.endsWith("."+d))
+        || h.includes("news") || h.includes("times") || h.includes("tv") || h.includes("post");
+    } catch { return false; }
+  };
+
+  // ── Score each source for Top Stories ─────────────────────────────────────
+  const scoreSource = (s) => {
+    const h = (() => { try { return new URL(s.url).hostname.replace(/^www\./,""); } catch { return ""; } })();
+    let score = 0;
+    if (priorityDomains.some(d => h===d || h.endsWith("."+d))) score += 100; // Regional priority
+    if (isNewsMedia(s.url)) score += 50;   // General news media
+    if (s.image) score += 30;              // Has a real image
+    if (s.published_date) score += 10;     // Has publish date (fresh)
+    return score;
+  };
+
+  // ── Top Stories: GUARANTEED 4 cards, always ───────────────────────────────
+  const wikiSource = validSources.find((s) => isWiki(s.url));
+  const storyPool = validSources.filter((s) => !isWiki(s.url) && !isSocial(s.url));
+
+  // Sort by score descending, take top 4 — ALWAYS produces 4 if any results exist
+  const newsSources = storyPool
+    .map(s => ({ source: s, score: scoreSource(s) }))
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.source)
+    .slice(0, 4);
+
+  const topStoryUrls = newsSources.map(s => s.url);
+
+  // Always show Top Stories (even if < 4 sources, show what we have)
+  const storiesHtml = (() => {
+    if (!newsSources.length) return "";
+    const cards = newsSources.map(buildNewsCard).join("");
+    return `
+      <div class="tsn-grid">${cards}</div>
+      <a class="ts-more-btn" href="https://news.google.com/search?q=${encodeURIComponent(query)}" target="_blank" rel="noreferrer noopener">
+        More stories
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>`;
+  })();
+
+  // ── Social Profiles ───────────────────────────────────────────────────────
+  const socialProfiles = detectSocialProfiles(validSources, query);
+  const socialHtml = socialProfiles.length
+    ? `<section class="overview-section">
+        <h3 class="overview-heading">Profiles</h3>
+        <div class="social-profiles-row">
+          ${socialProfiles.map((p) => `
+            <a class="sp-card" href="${escapeHtml(p.url)}" target="_blank" rel="noreferrer noopener" title="${escapeHtml(p.name)}">
+              <div class="sp-circle">
+                <img class="sp-icon" src="https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(p.key)}" alt="${escapeHtml(p.name)}" onerror="this.style.display='none'" />
+              </div>
+              <span class="sp-name">${escapeHtml(p.name)}</span>
+            </a>`).join("")}
+        </div>
+      </section>`
+    : "";
+
+  const wikiUrl = wikiSource ? wikiSource.url : `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(query)}`;
+
+  const html = `
+    <section class="overview-section">
+      <h3 class="overview-heading">About</h3>
+      <p class="overview-text ai-summary-text">
+        ${escapeHtml(summaryText)}
+        <a class="wiki-source-link" href="${escapeHtml(wikiUrl)}" target="_blank" rel="noreferrer noopener">Wikipedia</a>
+      </p>
+    </section>
+    ${storiesHtml ? `
+    <section class="overview-section">
+      <h3 class="overview-heading">Top Stories</h3>
+      ${storiesHtml}
+    </section>` : ""}
+    ${socialHtml}
+  `;
+  return { html, topStoryUrls };
+}
+
+
 
 function renderOverview(query, message, sources = []) {
   clearAnswerTyping();
   state.answerTypingToken += 1;
-  elements.answerText.innerHTML = formatOverviewHtml(query, message, sources);
-}
-
-function setSuggestedQuestions(items, currentQuery) {
-  const suggestions = [...new Set(
-    (items || [])
-      .map((item) => (typeof item === "string" ? item.trim() : ""))
-      .filter(Boolean)
-      .filter((item) => item.toLowerCase() !== currentQuery.toLowerCase()),
-  )].slice(0, 4);
-
-  elements.relatedRow.innerHTML = "";
-
-  if (!suggestions.length) {
-    elements.relatedLabel.classList.remove("is-visible");
-    elements.relatedRow.classList.remove("is-visible");
-    return;
-  }
-
-  for (const item of suggestions) {
-    const button = document.createElement("button");
-    button.className = "related-chip";
-    button.type = "button";
-    button.textContent = item;
-    button.addEventListener("click", () => {
-      elements.queryInput.value = item;
-      elements.queryInput.focus();
-      void executeSearch(item);
-    });
-    elements.relatedRow.appendChild(button);
-  }
-
-  elements.relatedLabel.classList.add("is-visible");
-  elements.relatedRow.classList.add("is-visible");
-}
-
-function buildFollowUpQuestions(query, sources) {
-  const cleanedQuery = query.trim();
-  const sourceTitle = sources[0]?.title || "";
-  const shortTopic = sourceTitle || cleanedQuery;
-
-  return [
-    `Can you explain ${cleanedQuery} in simple words with a step-by-step example?`,
-    `What are the most important facts, benefits, and practical uses related to ${shortTopic}?`,
-    `Can you compare different ways to understand or apply ${cleanedQuery} in real life?`,
-    `What common mistakes should someone avoid when learning about ${cleanedQuery}?`,
-  ];
+  const result = formatOverviewHtml(query, message, sources);
+  elements.answerText.innerHTML = result.html;
+  return result.topStoryUrls;
 }
 
 function getCurrentPositionAsync(options) {
@@ -737,6 +1112,170 @@ function stopLocationWatch() {
   if (state.locationWatchId !== null) {
     navigator.geolocation.clearWatch(state.locationWatchId);
     state.locationWatchId = null;
+  }
+}
+
+// ── Weather (Open-Meteo — no API key required) ───────────────────────────────
+
+const WMO_CODES = {
+  0:  { label: "Clear Sky",          emoji: "☀️" },
+  1:  { label: "Mainly Clear",        emoji: "🌤️" },
+  2:  { label: "Partly Cloudy",       emoji: "⛅" },
+  3:  { label: "Overcast",            emoji: "☁️" },
+  45: { label: "Fog",                 emoji: "🌫️" },
+  48: { label: "Rime Fog",            emoji: "🌫️" },
+  51: { label: "Light Drizzle",       emoji: "🌦️" },
+  53: { label: "Moderate Drizzle",    emoji: "🌦️" },
+  55: { label: "Dense Drizzle",       emoji: "🌧️" },
+  61: { label: "Slight Rain",         emoji: "🌧️" },
+  63: { label: "Moderate Rain",       emoji: "🌧️" },
+  65: { label: "Heavy Rain",          emoji: "🌧️" },
+  71: { label: "Slight Snow",         emoji: "🌨️" },
+  73: { label: "Moderate Snow",       emoji: "❄️" },
+  75: { label: "Heavy Snow",          emoji: "❄️" },
+  77: { label: "Snow Grains",         emoji: "🌨️" },
+  80: { label: "Slight Showers",      emoji: "🌦️" },
+  81: { label: "Moderate Showers",    emoji: "🌧️" },
+  82: { label: "Violent Showers",     emoji: "⛈️" },
+  85: { label: "Slight Snow Showers", emoji: "🌨️" },
+  86: { label: "Heavy Snow Showers",  emoji: "❄️" },
+  95: { label: "Thunderstorm",        emoji: "⛈️" },
+  96: { label: "Thunderstorm w/ Hail",emoji: "🌩️" },
+  99: { label: "Thunderstorm w/ Hail",emoji: "🌩️" },
+};
+
+function decodeWmo(code) {
+  return WMO_CODES[code] || { label: "Unknown", emoji: "🌡️" };
+}
+
+function getUvLabel(uv) {
+  if (uv === null || uv === undefined) return "--";
+  if (uv <= 2)  return `${uv} Low`;
+  if (uv <= 5)  return `${uv} Moderate`;
+  if (uv <= 7)  return `${uv} High`;
+  if (uv <= 10) return `${uv} Very High`;
+  return `${uv} Extreme`;
+}
+
+async function fetchWeather(latitude, longitude) {
+  const key = `${latitude.toFixed(3)},${longitude.toFixed(3)}`;
+  if (state.weatherFetchedForCoords === key) return; // avoid refetching same spot
+
+  try {
+    const url = new URL("https://api.open-meteo.com/v1/forecast");
+    url.searchParams.set("latitude", latitude.toFixed(5));
+    url.searchParams.set("longitude", longitude.toFixed(5));
+    url.searchParams.set("current", [
+      "temperature_2m",
+      "apparent_temperature",
+      "relative_humidity_2m",
+      "wind_speed_10m",
+      "precipitation",
+      "uv_index",
+      "weather_code",
+    ].join(","));
+    url.searchParams.set("daily", [
+      "weather_code",
+      "temperature_2m_max",
+      "temperature_2m_min",
+      "precipitation_sum",
+    ].join(","));
+    url.searchParams.set("forecast_days", "5");
+    url.searchParams.set("timezone", "auto");
+
+    const resp = await fetch(url.toString(), { cache: "no-store" });
+    if (!resp.ok) throw new Error(`Open-Meteo ${resp.status}`);
+
+    const data = await resp.json();
+    const cur = data.current || {};
+
+    const temp    = cur.temperature_2m;
+    const feels   = cur.apparent_temperature;
+    const humidity= cur.relative_humidity_2m;
+    const wind    = cur.wind_speed_10m;
+    const rain    = cur.precipitation;
+    const uv      = cur.uv_index;
+    const code    = cur.weather_code;
+    const wmo     = decodeWmo(code);
+
+    if (elements.weatherEmoji)    elements.weatherEmoji.textContent = wmo.emoji;
+    if (elements.weatherTemp)     elements.weatherTemp.textContent = temp !== null ? `${Math.round(temp)}°C` : "--°C";
+    if (elements.weatherFeels)    elements.weatherFeels.textContent = feels !== null ? `Feels like ${Math.round(feels)}°C` : "";
+    if (elements.weatherHumidity) elements.weatherHumidity.textContent = humidity !== null ? `${humidity}%` : "--%";
+    if (elements.weatherWind)     elements.weatherWind.textContent = wind !== null ? `${Math.round(wind)} km/h` : "-- km/h";
+    if (elements.weatherRain)     elements.weatherRain.textContent = rain !== null ? `${rain} mm` : "-- mm";
+    if (elements.weatherUV)       elements.weatherUV.textContent = getUvLabel(uv);
+
+    // Header: "Weather   Thursday, 10:00 AM   |   Mostly Cloudy"
+    const now = new Date();
+    const dayName = now.toLocaleDateString([], { weekday: "long" });
+    const timeStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+    if (elements.weatherDatetime) {
+      elements.weatherDatetime.textContent = `${dayName}, ${timeStr}`;
+    }
+    if (elements.weatherHeaderCondition) {
+      elements.weatherHeaderCondition.textContent = wmo.label;
+    }
+
+    // 4-day forecast (skip today index 0, show next 4)
+    if (elements.weatherForecast && data.daily) {
+      const daily = data.daily;
+      const dates    = daily.time || [];
+      const codes    = daily.weather_code || [];
+      const maxTemps = daily.temperature_2m_max || [];
+      const minTemps = daily.temperature_2m_min || [];
+      let forecastHtml = "";
+      const count = Math.min(dates.length, 5);
+      for (let i = 1; i < count; i++) {
+        const date   = new Date(dates[i] + "T12:00:00");
+        const fday   = date.toLocaleDateString([], { weekday: "short" });
+        const fwmo   = decodeWmo(codes[i]);
+        const hi = maxTemps[i] != null ? `${Math.round(maxTemps[i])}°` : "--°";
+        const lo = minTemps[i] != null ? `${Math.round(minTemps[i])}°` : "--°";
+        forecastHtml += `<div class="wc-fc-day">
+          <span class="wc-fc-name">${escapeHtml(fday)}</span>
+          <span class="wc-fc-emoji" title="${escapeHtml(fwmo.label)}">${fwmo.emoji}</span>
+          <div class="wc-fc-temps">
+            <span class="wc-fc-hi">${hi}</span>
+            <span class="wc-fc-sep">/</span>
+            <span class="wc-fc-lo">${lo}</span>
+          </div>
+        </div>`;
+      }
+      elements.weatherForecast.innerHTML = forecastHtml;
+    }
+
+    if (elements.weatherBody) elements.weatherBody.hidden = false;
+    applyWeatherCardTint(code);
+
+    state.weatherFetchedForCoords = key;
+  } catch (err) {
+    console.warn("Weather fetch failed:", err);
+    if (elements.locationMeta) {
+      elements.locationMeta.textContent = "Weather data unavailable.";
+    }
+  }
+}
+
+function applyWeatherCardTint(code) {
+  const card = elements.weatherCard;
+  if (!card) return;
+  // Clear previous tints
+  card.removeAttribute("data-weather");
+  if (code === 0 || code === 1) {
+    card.setAttribute("data-weather", "sunny");
+  } else if (code === 2 || code === 3) {
+    card.setAttribute("data-weather", "cloudy");
+  } else if (code >= 51 && code <= 67) {
+    card.setAttribute("data-weather", "rainy");
+  } else if (code >= 71 && code <= 77) {
+    card.setAttribute("data-weather", "snowy");
+  } else if (code >= 80 && code <= 82) {
+    card.setAttribute("data-weather", "showery");
+  } else if (code >= 95) {
+    card.setAttribute("data-weather", "stormy");
+  } else {
+    card.setAttribute("data-weather", "foggy");
   }
 }
 
@@ -773,25 +1312,18 @@ async function reverseLookupLocation(latitude, longitude) {
       return false;
     }
 
-    const placeName = (
-      topResult.areaName
-      || topResult.cityName
-      || topResult.stateName
-      || topResult.countryName
-      || topResult.formattedAddress
-      || ""
-    ).trim();
-    const pincode = String(topResult.pincode || "").trim();
-    const locationLabel = placeName
-      ? (pincode ? `${placeName} - ${pincode}` : placeName)
-      : "";
+    const locationLabel = formatPreciseLocationLabel(topResult);
 
     if (!locationLabel) {
       return false;
     }
 
     elements.locationText.textContent = locationLabel;
-    elements.locationMeta.textContent = `Latitude ${latitude.toFixed(5)}, Longitude ${longitude.toFixed(5)}`;
+    // Remove the extra "full address" / coordinates row under the card.
+    if (elements.locationMeta) {
+      elements.locationMeta.textContent = "";
+      elements.locationMeta.hidden = true;
+    }
     return true;
   } catch (error) {
     console.error(error);
@@ -799,15 +1331,122 @@ async function reverseLookupLocation(latitude, longitude) {
   }
 }
 
+function formatPreciseLocationLabel(result) {
+  const areaName = String(
+    result?.areaName
+    || result?.neighbourhood
+    || result?.cityDistrict
+    || result?.suburb
+    || "",
+  ).trim();
+  const cityName = String(result?.cityName || result?.townName || "").trim();
+  const stateName = String(result?.stateName || "").trim();
+  const countryName = String(result?.countryName || "").trim();
+  const pincode = String(result?.pincode || "").trim();
+
+  const orderedParts = [areaName, cityName, stateName, countryName].filter(Boolean);
+  const baseLocation = orderedParts.join(", ");
+
+  if (!baseLocation) {
+    return "";
+  }
+  return pincode ? `${baseLocation} - ${pincode}` : baseLocation;
+}
+
 function routeToBackend(path) {
   window.location.href = path;
+}
+
+function switchToAccount(email) {
+  // Close the dropdown immediately for responsive feel.
+  elements.profileDropdown.hidden = true;
+  elements.avatarButton.setAttribute("aria-expanded", "false");
+
+  // Try instant local switch first (no Google redirect).
+  fetch("/api/auth/switch", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+    .then((resp) => {
+      if (!resp.ok) throw new Error("no_stored_session");
+      return resp.json();
+    })
+    .then((data) => {
+      if (!data.ok || !data.user) throw new Error("invalid_response");
+      // Success — update UI instantly without page reload.
+      showLoggedInUI(data.user);
+      const resolvedUser = getResolvedUser(data.user);
+      showAccountSwitchToast(
+        resolvedUser.name || data.user.name,
+        resolvedUser.picture || data.user.picture,
+      );
+      renderAccountsList();
+      syncHistoryUiState();
+    })
+    .catch(() => {
+      // No stored session for this account — fall back to Google OAuth.
+      routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
+    });
+}
+
+let _toastTimer = null;
+function showAccountSwitchToast(name, picture) {
+  const toast = document.getElementById("accountSwitchToast");
+  if (!toast) return;
+
+  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+  toast.classList.remove("is-hiding");
+
+  const initials = (name || "?").trim().charAt(0).toUpperCase() || "?";
+  const avatarHtml = picture
+    ? `<img class="account-switch-toast-avatar" src="${picture}" alt="" />`
+    : `<span class="account-switch-toast-fallback">${initials}</span>`;
+
+  toast.innerHTML = `
+    <svg class="account-switch-toast-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    ${avatarHtml}
+    <span>Switched to ${name || "account"}</span>
+  `;
+  toast.hidden = false;
+
+  _toastTimer = setTimeout(() => {
+    toast.classList.add("is-hiding");
+    _toastTimer = setTimeout(() => {
+      toast.hidden = true;
+      toast.classList.remove("is-hiding");
+    }, 350);
+  }, 3000);
+}
+
+function scrubIncognitoUi() {
+  try {
+    localStorage.removeItem("quair-incognito");
+    localStorage.removeItem("incognito");
+    sessionStorage.removeItem("quair-incognito");
+    sessionStorage.removeItem("incognito");
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+
+  const candidates = document.querySelectorAll(
+    "#profileDropdown .dropdown-feature-item, #profileDropdown .profile-menu-item, #profileDropdown button",
+  );
+
+  for (const item of candidates) {
+    const label = (item.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (label.includes("incognito")) {
+      item.remove();
+    }
+  }
 }
 
 async function applyLocationFix(position, options = {}) {
   const { latitude, longitude, accuracy } = position.coords;
   const shouldUseFix =
     options.force === true
-    || accuracy < state.bestLocationAccuracy - 5
+    || accuracy < state.bestLocationAccuracy - 3
     || !Number.isFinite(state.bestLocationAccuracy);
 
   if (!shouldUseFix) {
@@ -816,18 +1455,22 @@ async function applyLocationFix(position, options = {}) {
 
   state.bestLocationAccuracy = accuracy;
   elements.locationText.textContent = "Refining your location...";
-  elements.locationMeta.textContent = `Latitude ${latitude.toFixed(5)}, Longitude ${longitude.toFixed(5)}`;
+  if (elements.locationMeta) elements.locationMeta.textContent = "";
 
   const resolved = await reverseLookupLocation(latitude, longitude);
 
   if (!resolved) {
-    elements.locationText.textContent = `Latitude ${latitude.toFixed(5)}, Longitude ${longitude.toFixed(5)}`;
+    elements.locationText.textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
   }
+  if (elements.locationMeta) elements.locationMeta.textContent = "";
 
-  if (accuracy <= 40) {
+  if (resolved && accuracy <= 20) {
     state.locationSettled = true;
     stopLocationWatch();
   }
+
+  // Fetch live weather for this location
+  void fetchWeather(latitude, longitude);
 }
 
 async function updateUserLocation() {
@@ -885,7 +1528,7 @@ async function updateUserLocation() {
 
     setTimeout(() => {
       stopLocationWatch();
-    }, 30000);
+    }, 45000);
   } catch (error) {
     const messages = {
       1: "Location access was denied in the browser.",
@@ -903,11 +1546,11 @@ function renderResults(query) {
   const trimmedQuery = query.trim();
 
   if (!trimmedQuery) {
+    setTabTitleForQuery("");
     clearAnswerTyping();
     elements.answerWrap.classList.remove("is-visible");
     elements.results.innerHTML = "";
     elements.citations.innerHTML = "";
-    setSuggestedQuestions([], "");
     elements.emptyState.style.display = "block";
     elements.emptyState.textContent = "";
     setSearchStatus("");
@@ -918,7 +1561,6 @@ function renderResults(query) {
   renderOverview(trimmedQuery, "Searching...", []);
   elements.citations.innerHTML = "";
   elements.results.innerHTML = "";
-  setSuggestedQuestions(buildFollowUpQuestions(trimmedQuery, []), trimmedQuery);
   elements.emptyState.style.display = "none";
   elements.emptyState.textContent = "";
 }
@@ -930,7 +1572,6 @@ function renderErrorState(query, message) {
   renderOverview(trimmedQuery, message || "Search is temporarily unavailable.", []);
   elements.citations.innerHTML = "";
   elements.results.innerHTML = "";
-  setSuggestedQuestions(buildFollowUpQuestions(trimmedQuery, []), trimmedQuery);
   setSearchStatus("Showing fallback response");
   elements.emptyState.style.display = "block";
   elements.emptyState.textContent = trimmedQuery
@@ -938,24 +1579,172 @@ function renderErrorState(query, message) {
     : "Search is temporarily unavailable.";
 }
 
+// ── YouTube video helpers ─────────────────────────────────────────────────────
+function isVideoUrl(url) {
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, "");
+    const videoDomains = ["youtube.com", "youtu.be", "m.youtube.com", "vimeo.com", "dailymotion.com", "twitch.tv", "tiktok.com", "bilibili.com"];
+    return videoDomains.some(d => h === d || h.endsWith("." + d)) || h.includes("video");
+  } catch { return false; }
+}
+
+function extractYouTubeId(url) {
+  try {
+    const u = new URL(url);
+    const h = u.hostname.replace(/^www\./, "");
+    if (h === "youtu.be") return u.pathname.slice(1).split("?")[0];
+    return u.searchParams.get("v") || "";
+  } catch { return ""; }
+}
+
+function pickVideoThumbForSource(source) {
+  const vid = extractYouTubeId(source.url);
+  if (vid) return `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
+  if (source.image) return source.image;
+  return `https://api.microlink.io?url=${encodeURIComponent(source.url)}&embed=image.url`;
+}
+
+function videoCreatorLabel(source) {
+  let host = "";
+  try {
+    host = new URL(source.url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+  const title = String(source.title || "").trim();
+  const ytLike = host.includes("youtube") || host === "youtu.be";
+  if (ytLike) {
+    const parts = title.split(/\s*[-–|]\s+/);
+    if (parts.length >= 2) {
+      const channel = parts[parts.length - 1].trim();
+      if (channel && channel.length < 96 && !/^youtube$/i.test(channel)) return channel;
+    }
+  }
+  if (!host) return "";
+  const seg = host.split(".").filter(Boolean);
+  const site = seg.length >= 2 ? seg[seg.length - 2] : seg[0];
+  return site ? site.charAt(0).toUpperCase() + site.slice(1) : host;
+}
+
+function videoCardDisplayTitle(source) {
+  const title = String(source.title || "").trim();
+  const label = videoCreatorLabel(source);
+  if (!label || !title) return title || "Video";
+  const re = new RegExp(`\\s*[-–|]\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
+  return title.replace(re, "").trim() || title;
+}
+
+function buildRelatedVideosRow(ytSources, query) {
+  const seen = new Set();
+  const picked = [];
+  for (const s of ytSources) {
+    if (!s?.url || seen.has(s.url)) continue;
+    seen.add(s.url);
+    picked.push(s);
+    if (picked.length >= 3) break;
+  }
+  if (!picked.length) return null;
+
+  const section = document.createElement("section");
+  section.className = "related-videos-strip";
+
+  const hdr = document.createElement("div");
+  hdr.className = "related-videos-strip-head";
+  hdr.innerHTML = `
+    <span class="related-videos-strip-title">Videos</span>
+    <a class="related-videos-strip-more" href="https://duckduckgo.com/?q=${encodeURIComponent(`${query} videos`)}" target="_blank" rel="noreferrer noopener">
+      View more
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>`;
+  section.appendChild(hdr);
+
+  const grid = document.createElement("div");
+  grid.className = "related-videos-grid";
+
+  for (const src of picked) {
+    const thumb = pickVideoThumbForSource(src);
+    const creator = videoCreatorLabel(src);
+    const cardTitle = videoCardDisplayTitle(src);
+    let host = "";
+    try {
+      host = new URL(src.url).hostname.replace(/^www\./, "");
+    } catch { /* noop */ }
+
+    const card = document.createElement("a");
+    card.className = "related-video-card";
+    card.href = src.url;
+    card.target = "_blank";
+    card.rel = "noreferrer noopener";
+    card.innerHTML = `
+      <div class="related-video-cover">
+        <img class="related-video-cover-img" src="${escapeHtml(thumb)}" alt="" loading="lazy" onerror="this.style.display='none'" />
+        <span class="related-video-play" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </span>
+      </div>
+      <div class="related-video-body">
+        <p class="related-video-title">${escapeHtml(cardTitle)}</p>
+        <div class="related-video-creator">
+          ${host ? `<img class="related-video-favicon" src="https://www.google.com/s2/favicons?sz=32&domain=${escapeAttribute(host)}" alt="" />` : ""}
+          <span>${escapeHtml(creator || host || "Video")}</span>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  }
+
+  section.appendChild(grid);
+  return section;
+}
+
 function buildResultCard(source) {
+
   const card = document.createElement("article");
   card.className = "result-card";
   const bookmarked = isBookmarked(source.url);
+  const sourceMeta = (() => {
+    try {
+      const parsed = new URL(source.url);
+      return {
+        hostname: parsed.hostname,
+        displayUrl: `${parsed.protocol}//${parsed.hostname}${parsed.pathname === "/" ? "" : parsed.pathname}`,
+      };
+    } catch {
+      return {
+        hostname: source.url,
+        displayUrl: source.url,
+      };
+    }
+  })();
   card.innerHTML = `
     <button class="result-bookmark${bookmarked ? " is-bookmarked" : ""}" type="button" title="${bookmarked ? "Remove bookmark" : "Bookmark"}" data-bm-url="${escapeHtml(source.url)}">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="${bookmarked ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
     </button>
-    <div class="result-url">${escapeHtml(source.url)}</div>
+    <div class="result-source-row">
+      <span class="result-favicon-circle">
+        <img class="result-favicon" src="https://www.google.com/s2/favicons?sz=32&domain=${escapeAttribute(sourceMeta.hostname)}" alt="" />
+      </span>
+      <div class="result-source-inline">
+        <span class="result-source-name">${escapeHtml(sourceMeta.hostname)}</span>
+        <span class="result-url">${escapeHtml(sourceMeta.displayUrl)}</span>
+      </div>
+    </div>
     <h3 class="result-title">
       <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(source.title)}</a>
     </h3>
     <p class="result-snippet">${escapeHtml(source.summary)}</p>
-    <div class="result-preview-tooltip">${escapeHtml((source.summary || "").slice(0, 260))}${(source.summary || "").length > 260 ? "..." : ""}</div>
+    <div class="result-meta">
+      ${Array.isArray(source.sources) ? source.sources.map((item) => `<span class="result-badge">${escapeHtml(item)}</span>`).join("") : ""}
+      ${source.semantic_score ? `<span class="result-badge">semantic ${Number(source.semantic_score).toFixed(2)}</span>` : ""}
+      ${source.quantum_score ? `<span class="result-badge">quantum ${Number(source.quantum_score).toFixed(2)}</span>` : ""}
+    </div>
   `;
   const bmBtn = card.querySelector(".result-bookmark");
   bmBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (!state.profileUser) {
+      openAuthModal();
+      return;
+    }
     if (isBookmarked(source.url)) {
       removeBookmark(source.url);
       bmBtn.classList.remove("is-bookmarked");
@@ -994,9 +1783,33 @@ function renderLiveResults(query, payload) {
   state.displayedResultCount = 0;
 
   tryInstantAnswer(query);
-  elements.searchFilters.hidden = false;
 
-  renderOverview(query, payload.final_answer || "insufficient data", sources);
+  // ── Spell Correction Banner ──
+  const correctedQuery = payload.corrected_query || null;
+  if (correctedQuery && correctedQuery.toLowerCase() !== query.toLowerCase()) {
+    elements.spellCorrection.hidden = false;
+    elements.spellCorrectedLink.textContent = correctedQuery;
+    elements.spellOriginalLink.textContent = query;
+
+    // Click corrected query → search with correct spelling
+    elements.spellCorrectedLink.onclick = (e) => {
+      e.preventDefault();
+      elements.queryInput.value = correctedQuery;
+      performSearch();
+    };
+
+    // Click original query → search with original (as-is)
+    elements.spellOriginalLink.onclick = (e) => {
+      e.preventDefault();
+      elements.queryInput.value = query;
+      performSearch();
+    };
+  } else {
+    elements.spellCorrection.hidden = true;
+  }
+
+  const finalAnswer = typeof payload?.final_answer === "string" ? payload.final_answer : String(payload?.final_answer || "");
+  const topStoryUrls = renderOverview(query, finalAnswer || "insufficient data", sources);
   elements.citations.innerHTML = "";
   elements.results.innerHTML = "";
 
@@ -1013,18 +1826,89 @@ function renderLiveResults(query, payload) {
     elements.citations.appendChild(link);
   }
 
-  const initialBatch = sources.slice(0, state.resultPageSize);
-  for (const source of initialBatch) {
-    elements.results.appendChild(buildResultCard(source));
-  }
-  state.displayedResultCount = initialBatch.length;
-  elements.loadMoreWrap.hidden = sources.length <= state.resultPageSize;
+  // ── Render result cards — inject related video row after 2nd card when we have video URLs from results
+  const topStoryUrlSet = new Set(topStoryUrls || []);
+  const webSources  = sources.filter((s) => !isVideoUrl(s.url) && !topStoryUrlSet.has(s.url));
+  const ytSources   = sources.filter((s) =>  isVideoUrl(s.url) && !topStoryUrlSet.has(s.url));
+  const initialWeb  = webSources.slice(0, state.resultPageSize);
+  const relatedVideosRow = buildRelatedVideosRow(ytSources, query);
 
-  setSuggestedQuestions(buildFollowUpQuestions(query, sources), query);
+  let videoRowInjected = false;
+  for (let i = 0; i < initialWeb.length; i++) {
+    elements.results.appendChild(buildResultCard(initialWeb[i]));
+
+    if (i === 1 && !videoRowInjected && relatedVideosRow) {
+      elements.results.appendChild(relatedVideosRow);
+      videoRowInjected = true;
+    }
+  }
+
+  // Render remaining results beyond the page limit (so full list shows after video section)
+  const remainingWeb = webSources.slice(state.resultPageSize);
+  for (const src of remainingWeb) {
+    elements.results.appendChild(buildResultCard(src));
+  }
+
+  if (!videoRowInjected && relatedVideosRow) {
+    elements.results.appendChild(relatedVideosRow);
+  }
+
+  state.displayedResultCount = initialWeb.length;
+  elements.loadMoreWrap.hidden = webSources.length <= state.resultPageSize;
+  renderAnalytics(payload);
+
   elements.answerWrap.classList.add("is-visible");
-  setSearchStatus(sources.length ? `Live results for "${query}"` : "No strong live sources found");
-  elements.emptyState.style.display = sources.length === 0 ? "block" : "none";
-  elements.emptyState.textContent = sources.length === 0 ? "No matching results found." : "";
+  setSearchStatus(
+    sources.length
+      ? buildSearchStatus(query, payload)
+      : "No strong live sources found",
+  );
+  const emptyMessage = String(payload.empty_state || "").trim();
+  elements.emptyState.style.display = sources.length === 0 || Boolean(emptyMessage) ? "block" : "none";
+  elements.emptyState.textContent = emptyMessage || (sources.length === 0 ? "No matching results found." : "");
+}
+
+function buildSearchStatus(query, payload) {
+  const semanticHits = payload?.analytics?.semantic_hits || 0;
+  const groverSteps = payload?.quantum?.simulated_quantum_steps;
+  const parts = [`Live results for "${query}"`];
+  if (semanticHits) {
+    parts.push(`semantic ${semanticHits}`);
+  }
+  if (groverSteps) {
+    parts.push(`grover ${groverSteps} steps`);
+  }
+  return parts.join(" | ");
+}
+
+function renderAnalytics(payload) {
+  if (!elements.analyticsBoard) {
+    return;
+  }
+
+  const analytics = payload?.analytics || {};
+  const quantum = payload?.quantum || {};
+  const modes = Array.isArray(payload?.search_modes) ? payload.search_modes : [];
+  const sourceMix = analytics.source_mix || {};
+  const chips = [
+    ["Modes", modes.join(" + ") || "classic"],
+    ["Results", analytics.result_count ?? 0],
+    ["Semantic", analytics.semantic_hits ?? 0],
+    ["Speedup", quantum.estimated_speedup ? `${quantum.estimated_speedup}x` : "n/a"],
+    ["Filters", analytics.filters_active ?? 0],
+    ["Mix", Object.entries(sourceMix).map(([key, value]) => `${key}:${value}`).join(" ") || "n/a"],
+  ];
+
+  elements.analyticsBoard.innerHTML = chips
+    .map(([label, value]) => `
+      <div class="analytics-chip">
+        <span class="analytics-label">${escapeHtml(String(label))}</span>
+        <strong class="analytics-value">${escapeHtml(String(value))}</strong>
+      </div>
+    `)
+    .join("");
+  elements.analyticsBoard.hidden = false;
+  elements.resultsHead.style.display = "flex";
 }
 
 function getDropdownItems(query) {
@@ -1040,17 +1924,25 @@ function getDropdownItems(query) {
 
   const suggestionMatches = state.liveSuggestions
     .filter((item) => {
-      const lower = item.toLowerCase();
+      const val = typeof item === "object" ? item.title : item;
+      const lower = val.toLowerCase();
       return !historyTextsLower.has(lower) && (!normalizedQuery || lower.includes(normalizedQuery));
     })
     .slice(0, normalizedQuery ? 5 : 0)
-    .map((item) => ({ type: "suggestion", text: item }));
+    .map((item) => typeof item === "object" 
+      ? { type: "suggestion", text: item.title, image: item.image || "", description: item.description || "" }
+      : { type: "suggestion", text: item, image: "", description: "" }
+    );
 
   const trendingMatches = !normalizedQuery
     ? state.liveSuggestions
-        .filter((item) => !historyTextsLower.has(item.toLowerCase()))
+        .filter((item) => !historyTextsLower.has((typeof item === "object" ? item.title : item).toLowerCase()))
         .slice(0, 8)
-        .map((item) => ({ type: "trending", text: item }))
+        .map((item) =>
+          typeof item === "object"
+            ? { type: "trending", text: item.title, image: item.image || "", description: item.description || "" }
+            : { type: "trending", text: item, image: "", description: "" }
+        )
     : [];
 
   return {
@@ -1068,6 +1960,14 @@ function closeDropdown() {
   state.activeIndex = -1;
 }
 
+function clearAnalytics() {
+  if (!elements.analyticsBoard) {
+    return;
+  }
+  elements.analyticsBoard.innerHTML = "";
+  elements.analyticsBoard.hidden = true;
+}
+
 function closeAttachMenu() {
   elements.attachMenu.classList.remove("is-open");
 }
@@ -1082,39 +1982,47 @@ function renderGroup(label, items, offset) {
   }
 
   const renderedItems = items
-    .map((item, index) => `
-      <button
-        class="suggest-item"
-        type="button"
-        data-index="${offset + index}"
-        data-value="${escapeAttribute(item.text)}"
-      >
-        <span class="item-icon">
-          ${item.type === "history" ? "↻" : item.type === "trending" ? "↗" : "⌕"}
-        </span>
-        <span class="item-text">${escapeHtml(item.text)}</span>
-        ${
-          item.type === "history"
-            ? `
-              <span class="item-type">
-                <span
-                  class="history-delete"
-                  data-delete="${escapeAttribute(item.text)}"
-                  aria-label="Delete history item"
-                >
-                  ×
-                </span>
-              </span>
-            `
-            : `<span class="item-type">${item.type === "trending" ? "" : item.type}</span>`
-        }
-      </button>
-    `)
+    .map((item, index) => {
+      const isHistory  = item.type === "history";
+      const isTrending = item.type === "trending";
+
+      // Left icon: circular image (trending with photo), trending arrow, or clock
+      let iconHtml;
+      if (item.image) {
+        iconHtml = `<img class="suggest-trend-img" src="${escapeAttribute(item.image)}" alt="" loading="lazy" onerror="this.style.display='none'" />`;
+      } else if (isTrending) {
+        iconHtml = `<svg class="suggest-trend-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+      } else if (isHistory) {
+        iconHtml = `<svg class="suggest-history-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+      } else {
+        iconHtml = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+      }
+
+      // Right side
+      const rightHtml = isHistory
+        ? `<button class="history-delete" type="button" data-delete="${escapeAttribute(item.text)}" aria-label="Remove">×</button>`
+        : "";
+
+      const descHtml = !isTrending && item.description
+        ? `<span class="suggest-trend-desc">${escapeHtml(item.description)}</span>`
+        : "";
+
+      return `
+        <div class="suggest-item${item.image ? " has-img" : ""}" role="button" tabindex="0"
+          data-index="${offset + index}" data-value="${escapeAttribute(item.text)}">
+          <span class="item-icon">${iconHtml}</span>
+          <span class="item-body">
+            <span class="item-text">${escapeHtml(item.text)}</span>
+            ${descHtml}
+          </span>
+          <span class="item-right">${rightHtml}</span>
+        </div>`;
+    })
     .join("");
 
   return `
     <div class="suggest-group">
-      <span class="suggest-label${label === "Trending searches" ? " trending-label" : ""}">
+      <span class="suggest-label${label === "Popular" ? " trending-label" : ""}">
         ${label}
       </span>
       ${renderedItems}
@@ -1155,21 +2063,35 @@ function openDropdown(query) {
   elements.queryInput.setAttribute("aria-expanded", "true");
   state.activeIndex = -1;
 
-  for (const button of Array.from(elements.suggestPanel.querySelectorAll(".suggest-item"))) {
-    button.addEventListener("click", () => {
-      const value = button.getAttribute("data-value") || "";
-      elements.queryInput.value = value;
-      void executeSearch(value);
-    });
-  }
+  // Delegate dropdown clicks (more reliable than nested listeners)
+  elements.suggestPanel.onclick = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
 
-  for (const button of Array.from(elements.suggestPanel.querySelectorAll(".history-delete"))) {
-    button.addEventListener("click", (event) => {
+    const deleteButton = target.closest(".history-delete");
+    if (deleteButton) {
+      event.preventDefault();
       event.stopPropagation();
-      const value = button.getAttribute("data-delete") || "";
-      removeHistoryItem(value);
-    });
-  }
+      const value = deleteButton.getAttribute("data-delete") || "";
+      if (value) {
+        removeHistoryItem(value);
+      }
+      return;
+    }
+
+    const itemButton = target.closest(".suggest-item");
+    if (!itemButton) {
+      return;
+    }
+    const value = itemButton.getAttribute("data-value") || "";
+    if (!value) {
+      return;
+    }
+    elements.queryInput.value = value;
+    void executeSearch(value, state.attachmentContext);
+  };
 }
 
 function updateActiveItem() {
@@ -1188,6 +2110,7 @@ async function executeSearch(query, attachmentContext = "", options = {}) {
 
   if (!trimmedQuery) {
     renderResults("");
+    clearAnalytics();
     closeDropdown();
 
     return;
@@ -1212,26 +2135,41 @@ async function executeSearch(query, attachmentContext = "", options = {}) {
 
   try {
     const translatedQuery = await translateQueryForSearch(trimmedQuery, settings.displayLanguage);
-    let searchUrl = `/api/search?q=${encodeURIComponent(translatedQuery)}&region=${encodeURIComponent(settings.region)}&hl=${encodeURIComponent(settings.displayLanguage)}&safe_search=${encodeURIComponent(settings.safeSearch)}&context=${encodeURIComponent(attachmentContext)}`;
-    const siteFilter = elements.filterSite?.value?.trim();
-    if (siteFilter) searchUrl += `&site=${encodeURIComponent(siteFilter)}`;
-    const dateFilter = elements.filterDateRange?.value;
-    if (dateFilter) searchUrl += `&date_range=${encodeURIComponent(dateFilter)}`;
-    const fileFilter = elements.filterFileType?.value;
-    if (fileFilter) searchUrl += `&filetype=${encodeURIComponent(fileFilter)}`;
+    const searchUrl = `/api/search?q=${encodeURIComponent(translatedQuery)}&region=${encodeURIComponent(settings.region)}&hl=${encodeURIComponent(settings.displayLanguage)}&safe_search=${encodeURIComponent(settings.safeSearch)}&context=${encodeURIComponent(attachmentContext)}`;
     const response = await fetch(searchUrl, { signal: state.searchController.signal });
 
     if (!response.ok) {
       throw new Error(`Search request failed with status ${response.status}`);
     }
 
-    const payload = await response.json();
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("Search returned an invalid response.");
+    }
 
     if (searchToken !== state.activeSearchToken) {
       return;
     }
 
-    renderLiveResults(displayQuery, payload);
+    try {
+      renderLiveResults(displayQuery, payload);
+    } catch (renderError) {
+      console.error(renderError);
+      renderErrorState(displayQuery, "Live search could not complete.");
+
+      // Try to render the sources list even if overview rendering fails.
+      const sources = Array.isArray(payload?.sources) ? payload.sources : [];
+      if (sources.length) {
+        elements.results.innerHTML = "";
+        for (const source of sources.slice(0, state.resultPageSize)) {
+          elements.results.appendChild(buildResultCard(source));
+        }
+        elements.loadMoreWrap.hidden = sources.length <= state.resultPageSize;
+        setSearchStatus(`Partial results for "${displayQuery}"`);
+      }
+    }
     void applyPageLanguage(settings.displayLanguage);
   } catch (error) {
     if (error.name === "AbortError") {
@@ -1239,7 +2177,7 @@ async function executeSearch(query, attachmentContext = "", options = {}) {
     }
 
     console.error(error);
-    renderErrorState(displayQuery, "Live search could not complete.");
+    renderErrorState(displayQuery, error?.message || "Live search could not complete.");
     void applyPageLanguage(settings.displayLanguage);
   } finally {
     if (searchToken === state.activeSearchToken) {
@@ -1251,19 +2189,60 @@ async function executeSearch(query, attachmentContext = "", options = {}) {
 
 async function loadTrendingTopics() {
   try {
-    const region = getStoredSettings().region || "US";
+    const region = getStoredSettings().region || "IN";
     const response = await fetch(`/api/trending?geo=${encodeURIComponent(region)}`);
-
-    if (!response.ok) {
-      throw new Error(`Trending request failed with status ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`Trending ${response.status}`);
     const payload = await response.json();
-    state.liveSuggestions = Array.isArray(payload.topics) ? payload.topics : [];
+    // Prefer rich items (with image/description); fall back to plain string array
+    if (Array.isArray(payload.rich) && payload.rich.length) {
+      state.liveSuggestions = payload.rich; // array of {title, image, description}
+    } else if (Array.isArray(payload.topics)) {
+      state.liveSuggestions = payload.topics; // plain strings
+    } else {
+      state.liveSuggestions = [];
+    }
   } catch (error) {
     console.error(error);
     state.liveSuggestions = [];
   }
+}
+
+async function refreshLiveSuggestions(query) {
+  const trimmedQuery = query.trim();
+  const requestToken = ++state.suggestRequestToken;
+
+  if (!trimmedQuery) {
+    await loadTrendingTopics();
+    openDropdown("");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/suggest?q=${encodeURIComponent(trimmedQuery)}`);
+    if (!response.ok) {
+      throw new Error(`Suggest request failed with status ${response.status}`);
+    }
+
+    const payload = await response.json();
+    if (requestToken !== state.suggestRequestToken) {
+      return;
+    }
+
+    const suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+    state.liveSuggestions = suggestions.length ? suggestions : state.liveSuggestions;
+    openDropdown(trimmedQuery);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function scheduleSuggestionRefresh(query) {
+  if (state.suggestTimer) {
+    clearTimeout(state.suggestTimer);
+  }
+  state.suggestTimer = window.setTimeout(() => {
+    void refreshLiveSuggestions(query);
+  }, 120);
 }
 
 function handlePickedFiles(files) {
@@ -1469,24 +2448,20 @@ async function analyzePickedFiles(files) {
   }
 }
 
-function setAuthMode(mode) {
-  const isSignup = mode === "signup";
-
+function setAuthMode() {
   elements.authEyebrow.textContent = "QuAir account";
-  elements.authTitle.textContent = isSignup ? "Create your account" : "Log in or sign up";
+  elements.authTitle.textContent = "Create your account";
   elements.authDescription.textContent = "";
-  elements.authSubmitButton.textContent = isSignup ? "Sign up with email" : "Continue";
+  elements.authSubmitButton.textContent = "Sign up with email";
 
   const googleLabel = document.getElementById("googleLabel");
-  const xLabel = document.getElementById("xLabel");
-  if (googleLabel) googleLabel.textContent = isSignup ? "Sign up with Google" : "Continue with Google";
-  if (xLabel) xLabel.textContent = isSignup ? "Sign up with X" : "Continue with X";
+  if (googleLabel) googleLabel.textContent = "Sign up with Google";
 
   void applyPageLanguage(getStoredSettings().displayLanguage);
 }
 
-function openAuthModal(mode) {
-  setAuthMode(mode);
+function openAuthModal() {
+  setAuthMode();
   elements.authModal.classList.add("is-open");
   elements.authModal.setAttribute("aria-hidden", "false");
   elements.authEmailInput.focus();
@@ -1514,27 +2489,34 @@ function buildDisplayNames() {
 const displayNames = buildDisplayNames();
 
 function formatLanguageLabel(code) {
-  if (code === "en-US") {
-    return "English (United States)";
-  }
-
-  if (code === "en-GB") {
-    return "English (United Kingdom)";
-  }
-
-  if (code === "en-IN") {
-    return "English (India)";
-  }
+  if (code === "en-US") return "English (United States)";
+  if (code === "en-GB") return "English (United Kingdom)";
+  if (code === "en-IN") return "English (India)";
 
   const [baseCode, regionCode] = code.split("-");
-  const languageLabel = displayNames.language?.of(baseCode) || baseCode;
+  const englishLabel = displayNames.language?.of(baseCode) || baseCode;
+
+  let nativeLabel = baseCode;
+  try {
+    const nativeDN = new Intl.DisplayNames([code], { type: "language" });
+    nativeLabel = nativeDN.of(baseCode) || baseCode;
+  } catch {
+    nativeLabel = englishLabel;
+  }
+
+  // Capitalize first letter of native label
+  const capitalizedNative = nativeLabel.charAt(0).toUpperCase() + nativeLabel.slice(1);
 
   if (regionCode) {
     const regionLabel = displayNames.region?.of(regionCode) || regionCode;
-    return `${languageLabel} (${regionLabel})`;
+    return `${capitalizedNative} (${englishLabel}, ${regionLabel})`;
   }
 
-  return languageLabel;
+  if (capitalizedNative.toLowerCase() === englishLabel.toLowerCase()) {
+    return englishLabel;
+  }
+
+  return `${capitalizedNative} (${englishLabel})`;
 }
 
 function formatRegionLabel(code) {
@@ -1562,7 +2544,10 @@ function populateSettingsOptions() {
   }
 
   if (!elements.settingRegion.options.length) {
-    populateSelectOptions(elements.settingRegion, topRegionOptions, formatRegionLabel);
+    const sortedRegions = [...topRegionOptions].sort((a, b) => {
+      return formatRegionLabel(a).localeCompare(formatRegionLabel(b));
+    });
+    populateSelectOptions(elements.settingRegion, sortedRegions, formatRegionLabel);
   }
 }
 
@@ -1582,6 +2567,8 @@ function collectTranslatableTargets() {
       parentElement
       && currentText.trim()
       && !parentElement.closest("script, style, noscript, code, pre, svg")
+      && !parentElement.classList.contains("brand")
+      && !parentElement.classList.contains("top-brand")
       && !["INPUT", "TEXTAREA", "SELECT", "OPTION"].includes(parentElement.tagName)
       && !textNodeOriginalMap.has(currentNode)
     ) {
@@ -1857,7 +2844,7 @@ function renderAccountsList() {
       if (e.target.closest("[data-remove-email]")) return;
       const email = item.getAttribute("data-switch-email");
       if (email?.toLowerCase() !== currentEmail) {
-        routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
+        switchToAccount(email);
       }
     });
   }
@@ -1884,7 +2871,7 @@ function getProfilePrefsForUser(user) {
   const profile = store.profiles?.[key] || {};
 
   return {
-    avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl : "",
+    avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : "",
     displayName: typeof profile.displayName === "string" ? profile.displayName : "",
     handle: typeof profile.handle === "string" ? profile.handle : "",
   };
@@ -1896,7 +2883,7 @@ function setProfilePrefsForUser(user, prefs) {
   const profiles = { ...(store.profiles || {}) };
 
   profiles[key] = {
-    avatarUrl: String(prefs.avatarUrl || "").trim(),
+    avatarDataUrl: String(prefs.avatarDataUrl || "").trim(),
     displayName: String(prefs.displayName || "").trim(),
     handle: String(prefs.handle || "").trim(),
   };
@@ -1952,15 +2939,32 @@ function getResolvedUser(user) {
     ...user,
     name: prefs.displayName || fallbackName,
     handle: prefs.handle || providerHandle,
-    picture: user.picture || prefs.avatarUrl || "",
+    picture: prefs.avatarDataUrl || user.picture || "",
   };
+}
+
+function getTimeBasedGreeting() {
+  const hour = new Date().getHours();
+
+  const morning = ["Good morning", "Hello", "Hi"];
+  const afternoon = ["Good afternoon", "Hello", "Hi"];
+  const evening = ["Good evening", "Hello", "Hi"];
+
+  // 05:00-11:59 morning, 12:00-16:59 afternoon, 17:00+ evening
+  if (hour >= 5 && hour < 12) return morning[Math.floor(Math.random() * morning.length)];
+  if (hour >= 12 && hour < 17) return afternoon[Math.floor(Math.random() * afternoon.length)];
+  return evening[Math.floor(Math.random() * evening.length)];
 }
 
 function applyUserSummary(user) {
   const resolvedUser = getResolvedUser(user);
   const fallback = getInitials(resolvedUser.name);
 
-  elements.profileSummaryName.textContent = resolvedUser.name;
+  if (elements.profileGreeting) {
+    const greeting = getTimeBasedGreeting();
+    elements.profileGreeting.textContent = `${greeting}, ${resolvedUser.name}!`;
+    elements.profileGreeting.hidden = false;
+  }
   elements.profileSummaryEmail.textContent = resolvedUser.handle || "No email or username available";
   elements.profileSummaryProvider.textContent = resolvedUser.provider
     ? `Signed in with ${resolvedUser.provider}`
@@ -1985,7 +2989,30 @@ function applyUserSummary(user) {
 
   elements.profileNameInput.value = resolvedUser.name;
   elements.profileHandleInput.value = resolvedUser.handle || "";
-  elements.profileAvatarInput.value = resolvedUser.picture || "";
+}
+
+async function readImageAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(new Error("Unable to read image."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleProfileAvatarSelection(file) {
+  if (!state.profileUser || !file || !file.type.startsWith("image/")) {
+    return;
+  }
+
+  const avatarDataUrl = await readImageAsDataUrl(file);
+  const existingPrefs = getProfilePrefsForUser(state.profileUser);
+  setProfilePrefsForUser(state.profileUser, {
+    avatarDataUrl,
+    displayName: existingPrefs.displayName || elements.profileNameInput.value.trim(),
+    handle: existingPrefs.handle || elements.profileHandleInput.value.trim(),
+  });
+  showLoggedInUI(state.profileUser);
 }
 
 function applySettingsUi() {
@@ -2026,44 +3053,6 @@ function setProfileSection(sectionName) {
   void applyPageLanguage(getStoredSettings().displayLanguage);
 }
 
-function applyGoogleTranslate(langCode) {
-  const targetLang = (langCode || "en").split("-")[0].toLowerCase();
-  if (targetLang === "en") {
-    const frame = document.querySelector(".goog-te-banner-frame");
-    if (frame) frame.remove();
-    const container = document.getElementById("google_translate_element");
-    if (container) container.innerHTML = "";
-    document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    document.body.style.top = "";
-    return;
-  }
-  document.cookie = `googtrans=/en/${targetLang}; path=/;`;
-  if (!document.getElementById("gt-script")) {
-    const container = document.getElementById("google_translate_element");
-    if (!container) {
-      const div = document.createElement("div");
-      div.id = "google_translate_element";
-      div.style.display = "none";
-      document.body.appendChild(div);
-    }
-    window.googleTranslateElementInit = () => {
-      new google.translate.TranslateElement({
-        pageLanguage: "en",
-        autoDisplay: false,
-      }, "google_translate_element");
-    };
-    const script = document.createElement("script");
-    script.id = "gt-script";
-    script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-    document.body.appendChild(script);
-  } else {
-    const combo = document.querySelector(".goog-te-combo");
-    if (combo) {
-      combo.value = targetLang;
-      combo.dispatchEvent(new Event("change"));
-    }
-  }
-}
 
 function persistSettingsFromUi() {
   translationCache.clear();
@@ -2072,7 +3061,7 @@ function persistSettingsFromUi() {
 
   applySettingsUi();
   syncHistoryUiState();
-  applyGoogleTranslate(newSettings.displayLanguage);
+  void applyPageLanguage(newSettings.displayLanguage);
   void loadTrendingTopics();
 }
 
@@ -2141,6 +3130,12 @@ function showLoggedOutUI() {
   elements.profileDropdown.hidden = true;
   elements.avatarButton.setAttribute("aria-expanded", "false");
   state.profileUser = null;
+  // Do not persist history for signed-out sessions.
+  try {
+    localStorage.removeItem(getUserHistoryKey());
+  } catch {}
+  closeDropdown();
+  syncHistoryUiState();
   closeProfilePanel();
 }
 
@@ -2158,8 +3153,9 @@ function syncHistoryUiState() {
   }
   const settings = getStoredSettings();
   if (elements.safeSearchStatusLabel) {
-    const labels = { moderate: "Moderate", strict: "Strict", off: "Off" };
-    elements.safeSearchStatusLabel.textContent = labels[settings.safeSearch] || "Moderate";
+    const theme = String(settings.theme || "system");
+    const labels = { system: "System", light: "Light", dark: "Dark" };
+    elements.safeSearchStatusLabel.textContent = labels[theme] || "System";
   }
   if (elements.languageStatusLabel) {
     const langTag = settings.displayLanguage || "en-US";
@@ -2233,7 +3229,7 @@ function renderHistoryList() {
       const time = formatHistoryTime(item.timestamp);
       const escapedQuery = item.query.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const entryId = (item.id || "").replace(/"/g, "&quot;");
-      html += `<div class="history-entry">
+      html += `<div class="history-entry" data-history-query="${escapedQuery}">
         <span class="history-entry-time">${time}</span>
         <img class="history-entry-favicon" src="https://www.google.com/s2/favicons?sz=32&domain=quairsearch.com" alt="" />
         <div class="history-entry-body">
@@ -2257,10 +3253,21 @@ function renderHistoryList() {
     });
   }
 
+  for (const row of elements.historyList.querySelectorAll(".history-entry[data-history-query]")) {
+    row.addEventListener("click", () => {
+      const q = row.getAttribute("data-history-query") || "";
+      if (!q) return;
+      closeHistoryModal();
+      elements.queryInput.value = q;
+      void executeSearch(q, "");
+    });
+  }
+
   void applyPageLanguage(getStoredSettings().displayLanguage);
 }
 
 function openHistoryModal() {
+  closeBookmarksModal();
   syncHistoryUiState();
   renderHistoryList();
   elements.historyModal.classList.add("is-open");
@@ -2277,6 +3284,7 @@ function toggleProfileDropdown() {
   elements.profileDropdown.hidden = isOpen;
   elements.avatarButton.setAttribute("aria-expanded", String(!isOpen));
   if (!isOpen) {
+    scrubIncognitoUi();
     syncHistoryUiState();
     renderAccountsList();
   }
@@ -2298,9 +3306,10 @@ async function handleLogout() {
   showLoggedOutUI();
   renderAccountsList();
 
+  // If there's another known account, switch to it instantly.
   const fallbackAccount = getFallbackAccount(remainingAccounts, signedOutUser?.email);
   if (fallbackAccount?.email) {
-    routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(fallbackAccount.email)}&expected_email=${encodeURIComponent(fallbackAccount.email)}`);
+    switchToAccount(fallbackAccount.email);
   }
 }
 
@@ -2310,9 +3319,21 @@ function bindEvents() {
     window.location.reload();
   });
 
+  // Weather refresh button
+  if (elements.weatherRefreshBtn) {
+    const doWeatherRefresh = () => {
+      state.weatherFetchedForCoords = null; // force re-fetch
+      void updateUserLocation();
+    };
+    elements.weatherRefreshBtn.addEventListener("click", doWeatherRefresh);
+    elements.weatherRefreshBtn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doWeatherRefresh(); }
+    });
+  }
+
   for (const button of document.querySelectorAll("[data-auth-trigger]")) {
     button.addEventListener("click", () => {
-      openAuthModal(button.getAttribute("data-auth-trigger") || "login");
+      openAuthModal();
     });
   }
 
@@ -2326,6 +3347,8 @@ function bindEvents() {
     const email = elements.authEmailInput.value.trim();
     if (email) {
       routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
+    } else {
+      routeToBackend("/api/auth/google/login");
     }
   });
 
@@ -2339,7 +3362,6 @@ function bindEvents() {
           : "";
         routeToBackend(`/api/auth/google/login${query}`);
       }
-      if (provider === "X") { routeToBackend("/api/auth/twitter/login"); }
     });
   }
 
@@ -2404,7 +3426,7 @@ function bindEvents() {
     event.preventDefault();
 
     setProfilePrefsForUser(state.profileUser, {
-      avatarUrl: elements.profileAvatarInput.value.trim(),
+      avatarDataUrl: getProfilePrefsForUser(state.profileUser).avatarDataUrl,
       displayName: elements.profileNameInput.value.trim(),
       handle: elements.profileHandleInput.value.trim(),
     });
@@ -2412,8 +3434,33 @@ function bindEvents() {
     if (state.profileUser) {
       showLoggedInUI(state.profileUser);
       setProfileSection("overview");
+      closeProfilePanel();
     }
   });
+
+  elements.settingsForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    persistSettingsFromUi();
+    closeProfilePanel();
+  });
+
+  const profileAvatarWrap = document.querySelector(".profile-summary-avatar-wrap");
+  if (profileAvatarWrap && elements.profileAvatarFileInput) {
+    profileAvatarWrap.addEventListener("dblclick", () => {
+      elements.profileAvatarFileInput.click();
+    });
+    elements.profileAvatarFileInput.addEventListener("change", async () => {
+      const file = elements.profileAvatarFileInput.files?.[0];
+      if (!file) {
+        return;
+      }
+      try {
+        await handleProfileAvatarSelection(file);
+      } finally {
+        elements.profileAvatarFileInput.value = "";
+      }
+    });
+  }
 
   const settingsSelects = [
     elements.settingDisplayLanguage,
@@ -2462,20 +3509,40 @@ function bindEvents() {
   }
 
   elements.queryInput.addEventListener("focus", () => {
-    openDropdown(elements.queryInput.value);
+    // On focus, show day-to-day trending topics (even when signed out).
+    void loadTrendingTopics().finally(() => {
+      openDropdown(elements.queryInput.value);
+    });
   });
 
   elements.queryInput.addEventListener("input", () => {
-
-
+    if (elements.clearButton) {
+      elements.clearButton.classList.toggle("is-visible", Boolean(elements.queryInput.value.trim()));
+    }
     if (elements.queryInput.value.trim()) {
-      openDropdown(elements.queryInput.value);
+      scheduleSuggestionRefresh(elements.queryInput.value);
       return;
     }
 
     openDropdown("");
     setSearchStatus(state.lastSubmittedQuery ? `Last search: ${state.lastSubmittedQuery}` : "");
   });
+
+  if (elements.clearButton) {
+    elements.clearButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      elements.queryInput.value = "";
+      state.lastSubmittedQuery = "";
+      setTabTitleForQuery("");
+      setTabFavicon(TAB_FAVICON_DEFAULT);
+      closeDropdown();
+      clearAnalytics();
+      renderResults("");
+      setSearchStatus("");
+      elements.clearButton.classList.remove("is-visible");
+      elements.queryInput.focus();
+    });
+  }
 
   elements.queryInput.addEventListener("keydown", (event) => {
     if (event.key === "ArrowDown" && state.activeItems.length) {
@@ -2644,12 +3711,6 @@ function bindEvents() {
     elements.loadMoreButton.addEventListener("click", showMoreResults);
   }
 
-  if (elements.applyFilters) {
-    elements.applyFilters.addEventListener("click", () => {
-      void executeSearch(elements.queryInput.value, state.attachmentContext);
-    });
-  }
-
   if (elements.menuBookmarks) {
     elements.menuBookmarks.addEventListener("click", () => {
       elements.profileDropdown.hidden = true;
@@ -2670,6 +3731,80 @@ function bindEvents() {
       exportHistoryAs("json");
     });
   }
+
+  if (elements.utilitiesToggle && elements.utilitiesPanel) {
+    elements.utilitiesToggle.addEventListener("click", () => {
+      setUtilitiesOpen(!elements.utilitiesPanel.classList.contains("is-open"));
+    });
+  }
+
+  if (elements.utilityCalculatorForm) {
+    elements.utilityCalculatorForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const expression = elements.utilityCalculatorInput.value.trim();
+      const result = tryCalculator(expression);
+      elements.utilityCalculatorOutput.textContent = result
+        ? result
+        : "Enter a valid math expression like 18 / 3 + 42.";
+    });
+  }
+
+  if (elements.utilityConverterForm) {
+    elements.utilityConverterForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const query = elements.utilityConverterInput.value.trim();
+      const result = tryUnitConvert(query);
+      elements.utilityConverterOutput.textContent = result
+        ? result
+        : "Try a supported conversion like 5 km to miles or 72 F to C.";
+    });
+  }
+
+  if (elements.utilityCurrencyForm) {
+    elements.utilityCurrencyForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const amount = Number.parseFloat(elements.utilityCurrencyAmount.value);
+      const from = elements.utilityCurrencyFrom.value;
+      const to = elements.utilityCurrencyTo.value;
+
+      if (!Number.isFinite(amount)) {
+        setCurrencyUi("Enter a valid amount.", "");
+        return;
+      }
+      if (!from || !to) {
+        setCurrencyUi("Select currencies to convert.", "");
+        return;
+      }
+
+      setCurrencyUi("Converting…", "");
+
+      let fxResult;
+      try {
+        fxResult = await fetchFxRate(from, to);
+      } catch {
+        setCurrencyUi("Rate unavailable for this currency pair.", "");
+        return;
+      }
+
+      const { rate, source } = fxResult;
+      if (!Number.isFinite(rate) || rate <= 0) {
+        setCurrencyUi("Rate unavailable for this currency pair.", "");
+        return;
+      }
+
+      const converted = amount * rate;
+      const formatted = new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: 6,
+      }).format(converted);
+
+      setCurrencyUi(
+        `${formatted} ${to}`,
+        `1 ${from} = ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 6 }).format(rate)} ${to} (${source})`
+      );
+    });
+  }
+
 }
 
 async function checkForLocalChanges() {
@@ -2714,16 +3849,23 @@ function startLocalAutoRefresh() {
   void checkForLocalChanges();
   devRefreshState.timerId = window.setInterval(() => {
     void checkForLocalChanges();
-  }, 1000);
+  }, 10000);
 }
 
 async function initializePage() {
   const params = new URLSearchParams(window.location.search);
-  if (params.has("auth") || params.has("auth_error")) {
+  const isAuthSuccess = params.has("auth");
+  const isAuthError = params.has("auth_error");
+  if (isAuthSuccess || isAuthError) {
     window.history.replaceState({}, "", "/");
   }
 
+  devRefreshState.isEnabled = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    && params.has("devrefresh");
+
   renderResults("");
+  setTabTitleForQuery("");
+  setTabFavicon(TAB_FAVICON_DEFAULT);
   const authActions = document.querySelector(".auth-actions");
   if (authActions) {
     authActions.hidden = true;
@@ -2733,12 +3875,23 @@ async function initializePage() {
   clearAttachments();
 
   applySettingsUi();
+  scrubIncognitoUi();
   bindEvents();
+  resetCurrencyManualRateMessage();
+  updateUtilityTime();
+  if (state.utilityTimeTimer) {
+    clearInterval(state.utilityTimeTimer);
+  }
+  state.utilityTimeTimer = window.setInterval(updateUtilityTime, 250);
   startLocalAutoRefresh();
   await checkSession();
+  scrubIncognitoUi();
+
+  // No toast needed for account switch — switchToAccount() handles it instantly.
+
   const savedLang = getStoredSettings().displayLanguage;
-  if (savedLang && savedLang.split("-")[0].toLowerCase() !== "en") {
-    applyGoogleTranslate(savedLang);
+  if (savedLang) {
+    void applyPageLanguage(savedLang);
   }
   void loadTrendingTopics();
   void updateUserLocation();

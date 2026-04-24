@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.indexer.es_client import SearchIndexClient
+from backend.indexer.es_client import DisabledSearchIndexClient, SearchIndexClient
 from backend.storage.postgres import PostgresStorage
 
 
 async def ingest_documents(
     postgres: PostgresStorage,
-    search_index: SearchIndexClient,
+    search_index: SearchIndexClient | DisabledSearchIndexClient,
     documents: list[dict[str, Any]],
 ) -> None:
     indexed_documents: list[dict[str, Any]] = []
