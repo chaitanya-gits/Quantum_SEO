@@ -1,0 +1,8 @@
+APScheduler==3.10.4
+asyncpg==0.30.0
+beautifulsoup4==4.12.3
+fastapi==0.115.12
+httpx==0.28.1
+opensearch-py==2.6.0
+redis==5.2.1
+uvicorn==0.34.0

@@ -297,8 +297,8 @@ Purpose:
 
 How:
 
-- Uses OpenAI embeddings API
-- Uses model `text-embedding-3-large`
+- Uses Gemini embeddings API (when enabled)
+- Uses Gemini embedding model (configured)
 - Truncates long text before embedding
 
 Why:
@@ -341,7 +341,7 @@ Use case:
 Important note:
 
 - `computePageRank` contains real PageRank logic
-- `getPageRanks` currently returns placeholder zero scores for provided URLs
+- The Python backend computes iterative PageRank scores from the stored `page_links` graph
 
 ---
 
@@ -1033,7 +1033,7 @@ Purpose:
 
 - building HTTP APIs
 
-## 7.7 OpenAI
+## 7.7 Gemini
 
 Used for:
 
@@ -1281,11 +1281,11 @@ In this project:
 
 Based on [.env.example](/G:/Quantum_SEO/.env.example), the project expects:
 
-### `OPENAI_API_KEY`
+### `GEMINI_API_KEY`
 
 Why:
 
-- Needed for embeddings
+- Needed for Gemini embeddings (when enabled)
 
 ### `ANTHROPIC_API_KEY`
 
@@ -1390,17 +1390,17 @@ There are two parallel styles in the repo:
 - the current local `serve.mjs` + `index.html` app
 - the TypeScript modular architecture
 
-### Suggest endpoint gap
+### Suggest endpoint
 
-The React component expects `/api/suggest`, but that endpoint is not present in the current runtime.
+The current runtime exposes `/api/suggest` through `backend/api/suggest.py`.
 
-### PageRank placeholder
+### PageRank scoring
 
-`getPageRanks` currently returns zero scores rather than computed live graph scores.
+The Python backend calculates PageRank over stored page links and applies it as a ranking boost.
 
 ### Local caching behavior
 
-The current runtime uses in-memory caching, not Redis.
+The current runtime uses Redis for trending queries, suggestions, and crawl frontier state.
 
 ---
 
@@ -1443,4 +1443,3 @@ If you want the next step, the most useful follow-ups are:
 - a table version of every file and dependency
 - an `ARCHITECTURE.md` split by backend/frontend/infrastructure
 - inline comments added directly into the codebase
-

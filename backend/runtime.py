@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from backend.config import settings
 from backend.crawler.frontier import CrawlFrontier
-from backend.indexer.es_client import SearchIndexClient
+from backend.indexer.es_client import DisabledSearchIndexClient, SearchIndexClient
 from backend.storage.postgres import PostgresStorage
 from backend.storage.redis import RedisStorage
 
@@ -14,7 +14,7 @@ from backend.storage.redis import RedisStorage
 class RuntimeServices:
     postgres: PostgresStorage
     redis: RedisStorage | None = None
-    search_index: SearchIndexClient | None = None
+    search_index: SearchIndexClient | DisabledSearchIndexClient | None = None
 
 
 @asynccontextmanager
@@ -31,10 +31,12 @@ async def open_runtime_services(
     search_index = None
 
     try:
-        if with_search_index:
+        if with_search_index and settings.enable_search_index:
             search_index = SearchIndexClient(settings.es_url, settings.search_index_name)
             if ensure_index:
                 await search_index.ensure_index()
+        elif with_search_index:
+            search_index = DisabledSearchIndexClient()
 
         yield RuntimeServices(
             postgres=postgres,
@@ -53,7 +55,7 @@ def require_redis(services: RuntimeServices) -> RedisStorage:
     return services.redis
 
 
-def require_search_index(services: RuntimeServices) -> SearchIndexClient:
+def require_search_index(services: RuntimeServices) -> SearchIndexClient | DisabledSearchIndexClient:
     if services.search_index is None:
         raise RuntimeError("Search index service has not been configured.")
     return services.search_index

@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Iterable
 
 import httpx
 import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.api.auth import router as auth_router
 from backend.api.health import router as health_router
 from backend.api.search import router as search_router
 from backend.api.suggest import router as suggest_router
 from backend.api.trending import router as trending_router
+from backend.api.attachments import router as attachments_router
+from backend.api.config_api import router as config_router
 from backend.config import settings
 from backend.crawler.scheduler import CrawlScheduler
 from backend.runtime import build_frontier, open_runtime_services, require_redis, require_search_index
@@ -40,20 +44,23 @@ async def lifespan(app: FastAPI):
             search_index=search_index,
         )
         app.state.frontier = frontier
-        app.state.scheduler = CrawlScheduler(frontier, services.postgres, search_index)
-        app.state.scheduler.start()
+        app.state.scheduler = None
+        if settings.enable_crawl_scheduler:
+            app.state.scheduler = CrawlScheduler(frontier, services.postgres, search_index)
+            app.state.scheduler.start()
 
         try:
             yield
         finally:
-            app.state.scheduler.stop()
+            if app.state.scheduler is not None:
+                app.state.scheduler.stop()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -62,6 +69,33 @@ app.include_router(search_router, prefix="/api")
 app.include_router(suggest_router, prefix="/api")
 app.include_router(trending_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(attachments_router, prefix="/api")
+app.include_router(config_router, prefix="/api")
+
+
+def _iter_tracked_files() -> Iterable[Path]:
+    tracked_roots = (
+        Path("backend"),
+        Path(settings.frontend_dir),
+    )
+
+    for root in tracked_roots:
+        if not root.exists():
+            continue
+        for file_path in root.rglob("*"):
+            if file_path.is_file():
+                yield file_path
+
+
+@app.get("/api/dev/version")
+async def get_dev_version() -> JSONResponse:
+    latest_mtime_ns = 0
+
+    for file_path in _iter_tracked_files():
+        latest_mtime_ns = max(latest_mtime_ns, file_path.stat().st_mtime_ns)
+
+    return JSONResponse({"version": str(latest_mtime_ns)})
 
 
 @app.get("/api/location/reverse")
@@ -103,8 +137,40 @@ async def reverse_location(lat: float = Query(...), lng: float = Query(...)) -> 
 
 
 frontend_dir = Path(settings.frontend_dir)
+
+
+@app.get("/about", include_in_schema=False)
+async def about_page() -> FileResponse:
+    return FileResponse(frontend_dir / "about.html")
+
+
+@app.get("/privacy", include_in_schema=False)
+async def privacy_page() -> FileResponse:
+    return FileResponse(frontend_dir / "privacy.html")
+
+
+@app.get("/terms", include_in_schema=False)
+async def terms_page() -> FileResponse:
+    return FileResponse(frontend_dir / "terms.html")
+
+
+@app.get("/help", include_in_schema=False)
+async def help_page() -> FileResponse:
+    return FileResponse(frontend_dir / "help.html")
+
+
+@app.get("/feedback", include_in_schema=False)
+async def feedback_page() -> FileResponse:
+    return FileResponse(frontend_dir / "feedback.html")
+
 app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host=settings.host, port=settings.port, reload=False)
+    uvicorn.run(
+        "backend.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=True,
+        reload_dirs=["backend", settings.frontend_dir],
+    )

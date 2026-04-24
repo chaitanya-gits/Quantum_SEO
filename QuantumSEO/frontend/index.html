@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[QuAir Search]</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234870ff'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(120 32 32)'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20260416c" />
+</head>
+<body>
+  <main class="page">
+    <header class="page-header">
+      <nav class="auth-actions" aria-label="Account actions" hidden>
+        <button class="auth-button auth-button-primary" type="button" data-auth-trigger="signup">
+          Sign up for more
+        </button>
+        <button class="auth-button auth-button-secondary" type="button" data-auth-trigger="login">
+          Log In
+        </button>
+      </nav>
+
+      <div class="header-brand-stack">
+        <a id="topBrandButton" class="top-brand" href="/" aria-label="QuAir Search">[QuAir Search]™</a>
+
+        <div id="userProfile" class="user-profile" hidden>
+          <button id="avatarButton" class="avatar-button" type="button" aria-label="User menu" aria-expanded="false" aria-controls="profileDropdown">
+            <img id="avatarImage" class="avatar-image" src="" alt="" />
+            <span id="avatarFallback" class="avatar-fallback" aria-hidden="true"></span>
+          </button>
+          <div id="profileDropdown" class="profile-dropdown" role="menu" hidden>
+            <div class="profile-info">
+              <strong id="profileName" class="profile-name"></strong>
+              <span id="profileEmail" class="profile-email"></span>
+            </div>
+            <hr class="profile-divider" />
+            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="overview">Profile overview</button>
+            <button class="profile-menu-item" type="button" role="menuitem" data-profile-panel="settings">Settings</button>
+            <button id="logoutButton" class="profile-menu-item" type="button" role="menuitem">Sign out</button>
+
+            <div id="accountsSection" class="dropdown-accounts-section">
+              <div id="accountsList" class="accounts-list"></div>
+              <button id="addAccountButton" class="dropdown-feature-item" type="button" role="menuitem">
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span class="dropdown-feature-text">Add another account</span>
+              </button>
+            </div>
+
+            <div class="dropdown-more-section">
+              <span class="dropdown-more-label">More from QuAir Search</span>
+
+              <button id="menuSearchHistory" class="dropdown-feature-item" type="button" role="menuitem">
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="dropdown-feature-text">Search history</span>
+                <span id="historyStatusLabel" class="dropdown-feature-badge">Saving</span>
+              </button>
+
+              <button id="menuSafeSearch" class="dropdown-feature-item" type="button" role="menuitem">
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span class="dropdown-feature-text">SafeSearch</span>
+                <span id="safeSearchStatusLabel" class="dropdown-feature-badge">Moderate</span>
+              </button>
+
+              <button id="menuLanguage" class="dropdown-feature-item" type="button" role="menuitem">
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span class="dropdown-feature-text">Language</span>
+                <span id="languageStatusLabel" class="dropdown-feature-badge">English</span>
+              </button>
+
+              <button id="menuBookmarks" class="dropdown-feature-item" type="button" role="menuitem">
+                <svg class="dropdown-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <span class="dropdown-feature-text">Bookmarks</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1 class="brand">QuAir</h1>
+      <p class="subcopy">
+        Explore hybrid search results, quick explanations, and source-backed answers in one place.
+      </p>
+
+      <div class="search-stage">
+        <div class="search-card">
+          <div class="search-shell">
+            <button
+              id="attachButton"
+              class="icon-button plus-button"
+              type="button"
+              aria-label="Upload image or file"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l9.2-9.2a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.48-8.48"></path>
+              </svg>
+            </button>
+
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6"></circle>
+              <path d="M20 20l-4.2-4.2"></path>
+            </svg>
+
+            <div class="search-input-wrap">
+              <div id="attachPreview" class="attach-preview" aria-live="polite"></div>
+              <input
+                id="query"
+                class="query-input"
+                type="text"
+                placeholder="Ask anything"
+                autocomplete="off"
+                aria-label="Search query"
+                aria-controls="suggestPanel"
+                aria-expanded="false"
+              />
+            </div>
+
+            <button
+              id="voiceButton"
+              class="icon-button"
+              type="button"
+              aria-label="Voice search"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3z"></path>
+                <path d="M19 11a7 7 0 0 1-14 0"></path>
+                <path d="M12 18v3"></path>
+              </svg>
+            </button>
+
+            <button
+              id="searchButton"
+              class="icon-button search-submit"
+              type="button"
+              aria-label="Run search"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 19V5"></path>
+                <path d="M5 12l7-7 7 7"></path>
+              </svg>
+            </button>
+
+            <div id="voiceFeedback" class="voice-feedback" aria-live="polite">
+              <button
+                id="voiceStopButton"
+                class="voice-stop"
+                type="button"
+                aria-label="Stop recording"
+              >
+                <span class="voice-pulse" aria-hidden="true"></span>
+                <span>Listening</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="attachMenu" class="attach-menu">
+            <button id="uploadAttachmentButton" class="attach-option" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21.44 11.05l-8.49 8.49a6 6 0 0 1-8.49-8.49l9.2-9.2a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.48-8.48"></path>
+              </svg>
+              <span>Upload photos &amp; files</span>
+            </button>
+          </div>
+
+          <input
+            id="filePicker"
+            type="file"
+            hidden
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.json,.ppt,.pptx"
+          />
+
+          <div id="suggestPanel" class="suggest-panel" role="listbox"></div>
+        </div>
+      </div>
+
+      <nav class="search-tabs" aria-label="Search filters">
+        <button class="search-tab is-active" type="button" data-search-tab="all">All</button>
+        <button class="search-tab" type="button" data-search-tab="images">Images</button>
+        <button class="search-tab" type="button" data-search-tab="videos">Videos</button>
+        <button class="search-tab" type="button" data-search-tab="maps">Maps</button>
+        <button class="search-tab" type="button" data-search-tab="news">News</button>
+        <button class="search-tab" type="button" data-search-tab="mail">Mail</button>
+        <button class="search-tab" type="button" data-search-tab="shopping">Shopping</button>
+        <button class="search-tab" type="button" data-search-tab="stocks">Stocks</button>
+      </nav>
+
+      <div id="searchingStatus" class="searching-status" aria-live="polite"></div>
+    </section>
+
+    <section class="results-section">
+      <article id="aiAnswer" class="ai-answer" aria-live="polite">
+        <div class="answer-label">AI Overview</div>
+        <div id="answerText" class="overview-body"></div>
+        <div id="citations" class="citations"></div>
+      </article>
+
+      <div class="results-head" id="resultsHead">
+        <div id="statusPill" class="status-pill"></div>
+      </div>
+
+      <div id="searchFilters" class="search-filters" hidden>
+        <select id="filterDateRange" class="filter-select" title="Date range">
+          <option value="">Any time</option>
+          <option value="day">Past 24 hours</option>
+          <option value="week">Past week</option>
+          <option value="month">Past month</option>
+          <option value="year">Past year</option>
+        </select>
+        <input id="filterSite" class="filter-input" type="text" placeholder="Site: example.com" title="Filter by site" />
+        <select id="filterFileType" class="filter-select" title="File type">
+          <option value="">Any type</option>
+          <option value="pdf">PDF</option>
+          <option value="doc">DOC</option>
+          <option value="ppt">PPT</option>
+          <option value="xls">XLS</option>
+          <option value="csv">CSV</option>
+        </select>
+        <button id="applyFilters" class="filter-apply" type="button">Apply</button>
+      </div>
+
+      <div id="instantAnswer" class="instant-answer" hidden></div>
+
+      <div id="relatedLabel" class="related-label">Suggested questions</div>
+      <div id="relatedRow" class="related-row"></div>
+      <div id="results" class="results-list"></div>
+      <div id="loadMoreWrap" class="load-more-wrap" hidden>
+        <button id="loadMoreButton" class="load-more-button" type="button">Load more results</button>
+      </div>
+      <div id="emptyState" class="empty-state"></div>
+    </section>
+
+    <section class="location-card" aria-live="polite">
+      <div class="location-label">Live location</div>
+      <p id="locationText" class="location-text">Waiting for browser location permission.</p>
+      <div id="locationMeta" class="location-meta"></div>
+    </section>
+
+    <footer class="page-footer">
+      <p class="footer-tagline">[QuAir Search]™</p>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="/about">About us</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/help">Help</a>
+        <a href="/feedback">Feedback</a>
+      </nav>
+      <p class="footer-copy">&copy; 2026 QuAir Search.</p>
+    </footer>
+  </main>
+
+  <div id="authModal" class="auth-modal" aria-hidden="true">
+    <div id="authBackdrop" class="auth-backdrop"></div>
+    <section
+      class="auth-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="authTitle"
+      aria-describedby="authDescription"
+    >
+      <button id="authCloseButton" class="auth-close" type="button" aria-label="Close authentication dialog">
+        ×
+      </button>
+
+      <div class="auth-dialog-header">
+        <span id="authEyebrow" class="auth-eyebrow">QuAir account</span>
+        <h2 id="authTitle" class="auth-title">Log in or sign up</h2>
+        <p id="authDescription" class="auth-description"></p>
+      </div>
+
+      <div class="auth-providers">
+        <button class="provider-button" type="button" data-provider="Google">
+          <span class="provider-icon provider-icon-google" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path fill="#4285f4" d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.43z"></path>
+              <path fill="#34a853" d="M12 22c2.7 0 4.97-.89 6.62-2.34l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.06v2.59A10 10 0 0 0 12 22z"></path>
+              <path fill="#fbbc05" d="M6.41 13.99a6.02 6.02 0 0 1 0-3.98V7.42H3.06a10 10 0 0 0 0 9.16l3.35-2.59z"></path>
+              <path fill="#ea4335" d="M12 5.89c1.47 0 2.79.51 3.82 1.5l2.87-2.87C16.96 2.91 14.69 2 12 2a10 10 0 0 0-8.94 5.42l3.35 2.59C7.2 7.65 9.4 5.89 12 5.89z"></path>
+            </svg>
+          </span>
+          <span id="googleLabel">Continue with Google</span>
+        </button>
+        <button class="provider-button" type="button" data-provider="X">
+          <span class="provider-icon provider-icon-x" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path fill="currentColor" d="M18.9 3h2.8l-6.2 7.1L22.8 21h-5.7l-4.4-6.7L6.9 21H4.1l6.6-7.6L1.7 3h5.8l4 6.2L18.9 3z"></path>
+            </svg>
+          </span>
+          <span id="xLabel">Continue with X</span>
+        </button>
+      </div>
+
+      <div class="auth-divider" aria-hidden="true">
+        <span></span>
+        <strong>or</strong>
+        <span></span>
+      </div>
+
+      <form id="authForm" class="auth-form">
+        <label class="auth-field">
+          <span class="auth-field-label">Email address</span>
+          <input id="authEmailInput" class="auth-input" type="email" placeholder="you@example.com" autocomplete="email" />
+        </label>
+        <button id="authSubmitButton" class="auth-submit" type="submit">Continue</button>
+      </form>
+
+      <p class="auth-footnote">
+        By continuing, you agree to the Terms and Privacy Policy.
+      </p>
+    </section>
+  </div>
+
+  <div id="profileModal" class="profile-modal" aria-hidden="true">
+    <div id="profileBackdrop" class="profile-backdrop"></div>
+    <section
+      class="profile-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profilePanelTitle"
+    >
+      <button id="profileCloseButton" class="profile-close" type="button" aria-label="Close profile panel">
+        ×
+      </button>
+
+      <div class="profile-panel-header">
+        <p class="profile-panel-kicker">Account</p>
+        <h2 id="profilePanelTitle" class="profile-panel-title">Your profile</h2>
+        <p id="profilePanelDescription" class="profile-panel-description"></p>
+      </div>
+
+      <div id="profileOverviewSection" class="profile-section">
+        <div class="profile-summary-card">
+          <div class="profile-summary-avatar-wrap">
+            <img id="profileSummaryAvatar" class="profile-summary-avatar" src="" alt="" />
+            <span id="profileSummaryFallback" class="profile-summary-fallback" aria-hidden="true"></span>
+          </div>
+          <div class="profile-summary-content">
+            <strong id="profileSummaryName" class="profile-summary-name"></strong>
+            <span id="profileSummaryEmail" class="profile-summary-email"></span>
+            <span id="profileSummaryProvider" class="profile-summary-provider"></span>
+          </div>
+        </div>
+
+        <form id="profileForm" class="profile-form">
+          <label class="profile-field">
+            <span class="profile-field-label">Display name</span>
+            <input id="profileNameInput" class="profile-input" type="text" placeholder="Your display name" />
+          </label>
+          <label class="profile-field">
+            <span class="profile-field-label">Email or username</span>
+            <input id="profileHandleInput" class="profile-input" type="text" placeholder="you@example.com or @username" />
+          </label>
+          <input id="profileAvatarInput" type="hidden" />
+          <button class="profile-save-button" type="submit">Save profile</button>
+        </form>
+      </div>
+
+      <form id="settingsForm" class="profile-form profile-section" hidden>
+        <label class="profile-field">
+          <span class="profile-field-label">Display language</span>
+          <span class="settings-help">For buttons, labels, hints, etc.</span>
+          <select id="settingDisplayLanguage" class="profile-input"></select>
+        </label>
+
+        <label class="profile-field">
+          <span class="profile-field-label">Region</span>
+          <span class="settings-help">For your search results</span>
+          <select id="settingRegion" class="profile-input"></select>
+        </label>
+
+        <label class="profile-field">
+          <span class="profile-field-label">Theme</span>
+          <span class="settings-help">Select your preferred theme</span>
+          <select id="settingTheme" class="profile-input">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+
+        <label class="profile-field">
+          <span class="profile-field-label">Safe search</span>
+          <span class="settings-help">Explicit content filtering</span>
+          <select id="settingSafeSearch" class="profile-input">
+            <option value="moderate">Moderate</option>
+            <option value="strict">Strict</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+
+      </form>
+    </section>
+  </div>
+
+  <div id="historyModal" class="history-modal" aria-hidden="true">
+    <div id="historyBackdrop" class="history-backdrop"></div>
+    <section class="history-panel" role="dialog" aria-modal="true" aria-labelledby="historyPanelTitle">
+      <div class="history-panel-header">
+        <h2 id="historyPanelTitle" class="history-panel-title">Search history</h2>
+        <div class="history-header-actions">
+          <label class="history-toggle-wrap" title="Toggle history saving">
+            <input id="historySavingToggle" type="checkbox" class="history-toggle-input" />
+            <span class="history-toggle-slider"></span>
+            <span class="history-toggle-label">Saving</span>
+          </label>
+          <button id="historyExportButton" class="history-export" type="button" title="Export history">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button id="historyDeleteAllButton" class="history-delete-all" type="button">Delete all</button>
+          <button id="historyCloseButton" class="history-close" type="button" aria-label="Close history">&times;</button>
+        </div>
+      </div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+  </div>
+
+  <div id="bookmarksModal" class="history-modal" aria-hidden="true">
+    <div id="bookmarksBackdrop" class="history-backdrop"></div>
+    <section class="history-panel" role="dialog" aria-modal="true" aria-labelledby="bookmarksPanelTitle">
+      <div class="history-panel-header">
+        <h2 id="bookmarksPanelTitle" class="history-panel-title">Bookmarks</h2>
+        <div class="history-header-actions">
+          <button id="bookmarksCloseButton" class="history-close" type="button" aria-label="Close bookmarks">&times;</button>
+        </div>
+      </div>
+      <div id="bookmarksList" class="history-list"></div>
+    </section>
+  </div>
+
+  <div id="imagePreviewModal" class="image-preview-modal" aria-hidden="true">
+    <div id="imagePreviewBackdrop" class="image-preview-backdrop"></div>
+    <section class="image-preview-dialog" role="dialog" aria-modal="true" aria-label="Image preview">
+      <button id="imagePreviewCloseButton" class="image-preview-close" type="button" aria-label="Close image preview">
+        ×
+      </button>
+      <img id="imagePreviewImage" class="image-preview-image" src="" alt="Uploaded image preview" />
+    </section>
+  </div>
+
+  <script type="module" src="/assets/app.js?v=20260416c"></script>
+</body>
+</html>
