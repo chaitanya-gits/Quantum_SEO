@@ -10,7 +10,7 @@ from base64 import urlsafe_b64decode, urlsafe_b64encode
 
 import httpx
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from backend.config import settings
 
