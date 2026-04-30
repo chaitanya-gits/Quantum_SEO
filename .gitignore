@@ -9,3 +9,4 @@ test-results
 .tools/
 __pycache__/
 *.pyc
+backups/

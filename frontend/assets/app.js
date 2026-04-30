@@ -6,6 +6,7 @@ const knownAccountsKey = "quair-known-accounts";
 const bookmarksKey = "quair-bookmarks";
 const defaultSearchPlaceholder = "Search anything";
 const translationBatchSize = 60;
+const searchCacheTtlMs = 60_000;
 
 const APP_BRAND_TITLE = "[QuAir Search]";
 
@@ -141,6 +142,12 @@ const elements = {
   profileSummaryName: document.getElementById("profileSummaryName"),
   profileGreeting: document.getElementById("profileGreeting"),
   profileSummaryProvider: document.getElementById("profileSummaryProvider"),
+  adminActivitySection: document.getElementById("adminActivitySection"),
+  adminActivityRefreshButton: document.getElementById("adminActivityRefreshButton"),
+  adminActivityStatus: document.getElementById("adminActivityStatus"),
+  adminActivityTableBody: document.getElementById("adminActivityTableBody"),
+  adminReportSummary: document.getElementById("adminReportSummary"),
+  adminReportJson: document.getElementById("adminReportJson"),
   settingDisplayLanguage: document.getElementById("settingDisplayLanguage"),
   settingRegion: document.getElementById("settingRegion"),
   settingTheme: document.getElementById("settingTheme"),
@@ -155,6 +162,7 @@ const elements = {
   historyStatusLabel: document.getElementById("historyStatusLabel"),
   languageStatusLabel: document.getElementById("languageStatusLabel"),
   menuLanguage: document.getElementById("menuLanguage"),
+  menuAdminDashboard: document.getElementById("menuAdminDashboard"),
   menuSafeSearch: document.getElementById("menuSafeSearch"),
   menuSearchHistory: document.getElementById("menuSearchHistory"),
   safeSearchStatusLabel: document.getElementById("safeSearchStatusLabel"),
@@ -241,6 +249,7 @@ const state = {
   answerTypingTimer: null,
   answerTypingToken: 0,
   attachmentContext: "",
+  attachmentSummary: "",
   attachments: [],
   bestLocationAccuracy: Number.POSITIVE_INFINITY,
   lastSubmittedQuery: "",
@@ -254,6 +263,8 @@ const state = {
   voiceDraft: "",
   voicePreviousValue: "",
   lastSearchPayload: null,
+  lastSearchEventId: null,
+  searchCache: new Map(),
   displayedResultCount: 0,
   resultPageSize: 10,
   previewHoverTimer: null,
@@ -261,7 +272,171 @@ const state = {
   suggestTimer: null,
   utilityTimeTimer: null,
   weatherFetchedForCoords: null,
+  adminActivityRows: [],
 };
+
+// ── Analytics tracker ────────────────────────────────────────────────────────
+function getAnonymousId() {
+  let id = localStorage.getItem("quair-anon-id");
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem("quair-anon-id", id);
+  }
+  return id;
+}
+
+async function trackSearch({ queryRaw, queryNormalized, resultCount, responseMs, settings }) {
+  try {
+    const response = await fetch("/api/track/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-anonymous-id": getAnonymousId() },
+      body: JSON.stringify({
+        anonymous_id: getAnonymousId(),
+        query_raw: queryRaw,
+        query_normalized: queryNormalized,
+        result_count: resultCount,
+        response_ms: responseMs,
+        region: settings?.region || "",
+        display_language: settings?.displayLanguage || "en-US",
+        safe_search: settings?.safeSearch || "moderate",
+        has_attachment: Boolean(state.attachments?.length),
+        search_tab: "all",
+      }),
+      keepalive: true,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json();
+    return payload?.event_id || null;
+  } catch {
+    return null;
+  }
+}
+
+async function trackClick({ searchEventId, resultUrl, resultTitle, resultDomain, resultRank, queryRaw }) {
+  try {
+    await fetch("/api/track/click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-anonymous-id": getAnonymousId() },
+      body: JSON.stringify({
+        anonymous_id: getAnonymousId(),
+        search_event_id: searchEventId || null,
+        result_url: resultUrl,
+        result_title: resultTitle || "",
+        result_domain: resultDomain || "",
+        result_rank: resultRank || null,
+        query_raw: queryRaw || "",
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // best-effort only
+  }
+}
+
+function formatAdminTimestamp(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+
+  return parsed.toLocaleString();
+}
+
+function renderAdminActivityTable(rows) {
+  if (!elements.adminActivityTableBody) {
+    return;
+  }
+
+  if (!rows.length) {
+    elements.adminActivityTableBody.innerHTML = `
+      <tr>
+        <td colspan="7">No signed-in search activity has been recorded yet.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  elements.adminActivityTableBody.innerHTML = rows.map((row) => {
+    const visitedUrl = String(row.visited_url || "").trim();
+    const visitedCell = visitedUrl
+      ? `<a href="${escapeAttribute(visitedUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(row.visited_domain || visitedUrl)}</a>`
+      : "—";
+
+    return `
+      <tr>
+        <td>${escapeHtml(row.display_name || "User")}</td>
+        <td>${escapeHtml(row.email || "—")}</td>
+        <td>${escapeHtml(formatAdminTimestamp(row.signed_up_at))}</td>
+        <td>${escapeHtml(row.query_raw || row.query_normalized || "—")}</td>
+        <td>${escapeHtml(formatAdminTimestamp(row.searched_at))}</td>
+        <td>${visitedCell}</td>
+        <td>${escapeHtml(formatAdminTimestamp(row.visited_at))}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderAdminReport(report) {
+  if (!elements.adminReportSummary || !elements.adminReportJson) {
+    return;
+  }
+
+  const summary = report?.summary || {};
+  const users = Number(summary.total_users || 0);
+  const searches = Number(summary.identified_searches || 0);
+  const clicks = Number(summary.identified_clicks || 0);
+  const sessions = Number(summary.active_sessions || 0);
+
+  elements.adminReportSummary.textContent = `Users: ${users} | Active sessions: ${sessions} | Identified searches: ${searches} | Identified clicks: ${clicks}`;
+  elements.adminReportJson.textContent = JSON.stringify(report, null, 2);
+}
+
+async function loadAdminActivity() {
+  if (!state.profileUser?.is_admin || !elements.adminActivityStatus) {
+    return;
+  }
+
+  elements.adminActivityStatus.textContent = "Loading activity…";
+
+  try {
+    const response = await fetch("/api/admin/activity?limit=100", { credentials: "same-origin" });
+    if (!response.ok) {
+      throw new Error(`Admin activity request failed with status ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    state.adminActivityRows = rows;
+    renderAdminActivityTable(rows);
+    elements.adminActivityStatus.textContent = `${payload?.total ?? rows.length} tracked signed-in search events`;
+
+    const reportResponse = await fetch("/api/admin/report?sample_limit=10", { credentials: "same-origin" });
+    if (!reportResponse.ok) {
+      throw new Error(`Admin report request failed with status ${reportResponse.status}`);
+    }
+    const reportPayload = await reportResponse.json();
+    renderAdminReport(reportPayload);
+  } catch (error) {
+    console.error(error);
+    state.adminActivityRows = [];
+    renderAdminActivityTable([]);
+    elements.adminActivityStatus.textContent = "Admin activity could not be loaded.";
+    if (elements.adminReportSummary) {
+      elements.adminReportSummary.textContent = "Admin report unavailable.";
+    }
+    if (elements.adminReportJson) {
+      elements.adminReportJson.textContent = "";
+    }
+  }
+}
 
 const devRefreshState = {
   currentVersion: null,
@@ -691,7 +866,11 @@ function setSearchingStatus(message) {
   const text = (message || "").trim();
 
   if (elements.searchingStatus) {
-    elements.searchingStatus.textContent = text;
+    elements.searchingStatus.setAttribute("aria-label", text);
+    const textNode = elements.searchingStatus.querySelector(".searching-status-text");
+    if (textNode) {
+      textNode.textContent = text;
+    }
     elements.searchingStatus.classList.toggle("is-visible", Boolean(text));
   }
 }
@@ -708,7 +887,7 @@ function setSearchLoading(isLoading, message) {
   }
 
   if (isLoading) {
-    setSearchingStatus(message || "Searching live web...");
+    setSearchingStatus("Loading");
     setSearchStatus("");
   } else {
     setSearchingStatus("");
@@ -903,6 +1082,7 @@ function detectSocialProfiles(sources, query = "") {
     const fallbacks = [
       { key: "linkedin.com", name: "LinkedIn", searchUrl: `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(query)}` },
       { key: "twitter.com", name: "X", searchUrl: `https://twitter.com/search?q=${encodeURIComponent(query)}` },
+      { key: "youtube.com", name: "YouTube", searchUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}` },
       { key: "facebook.com", name: "Facebook", searchUrl: `https://www.facebook.com/search/top?q=${encodeURIComponent(query)}` },
       { key: "instagram.com", name: "Instagram", searchUrl: `https://www.instagram.com/explore/tags/${encodeURIComponent(query.replace(/\s+/g, ""))}/` }
     ];
@@ -1289,7 +1469,9 @@ async function reverseLookupLocation(latitude, longitude) {
     if (response.ok) {
       const payload = await response.json();
       topResult = payload.results?.[0] || null;
-    } else {
+    }
+
+    if (!topResult) {
       // If the backend reverse-geocode endpoint isn't available, fall back to a public reverse geocoder.
       const fallbackResponse = await fetch(
         `https://geocode.maps.co/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`,
@@ -1309,8 +1491,26 @@ async function reverseLookupLocation(latitude, longitude) {
     }
 
     if (!topResult) {
-      return false;
+      const openMeteoResponse = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&language=en&count=1`,
+      );
+      if (openMeteoResponse.ok) {
+        const openMeteoPayload = await openMeteoResponse.json();
+        const result = openMeteoPayload.results?.[0] || null;
+        if (result) {
+          topResult = {
+            areaName: result.name || "",
+            cityName: result.city || result.name || "",
+            stateName: result.admin1 || "",
+            countryName: result.country || "",
+            pincode: result.postcode || "",
+            formattedAddress: "",
+          };
+        }
+      }
     }
+
+    if (!topResult) return false;
 
     const locationLabel = formatPreciseLocationLabel(topResult);
 
@@ -1357,17 +1557,73 @@ function routeToBackend(path) {
   window.location.href = path;
 }
 
+function buildGoogleAuthUrl(email = "", flow = "popup") {
+  const params = new URLSearchParams();
+  params.set("flow", flow);
+  if (email) {
+    params.set("login_hint", email);
+    params.set("expected_email", email);
+  }
+  return `/api/auth/google/login?${params.toString()}`;
+}
+
+function openGoogleAuthPopup(email = "") {
+  const popupWidth = 520;
+  const popupHeight = 720;
+  const dualScreenLeft = window.screenLeft ?? window.screenX ?? 0;
+  const dualScreenTop = window.screenTop ?? window.screenY ?? 0;
+  const viewportWidth = window.outerWidth || document.documentElement.clientWidth || popupWidth;
+  const viewportHeight = window.outerHeight || document.documentElement.clientHeight || popupHeight;
+  const left = Math.max(0, Math.round(dualScreenLeft + (viewportWidth - popupWidth) / 2));
+  const top = Math.max(0, Math.round(dualScreenTop + (viewportHeight - popupHeight) / 2));
+  const features = [
+    `width=${popupWidth}`,
+    `height=${popupHeight}`,
+    `left=${left}`,
+    `top=${top}`,
+    "resizable=yes",
+    "scrollbars=yes",
+  ].join(",");
+
+  const popup = window.open(buildGoogleAuthUrl(email), "quair-google-auth", features);
+  if (!popup) {
+    routeToBackend(buildGoogleAuthUrl(email, "redirect"));
+    return null;
+  }
+
+  try {
+    popup.focus();
+  } catch {}
+  return popup;
+}
+
 function switchToAccount(email) {
+  const targetEmail = String(email || "").trim();
+  const targetAccount = getKnownAccounts().find(
+    (account) => account.email?.toLowerCase() === targetEmail.toLowerCase(),
+  );
+
+  if (!targetEmail) {
+    showAccountSwitchToast("Account switch failed", "", "error");
+    return;
+  }
+
   // Close the dropdown immediately for responsive feel.
   elements.profileDropdown.hidden = true;
   elements.avatarButton.setAttribute("aria-expanded", "false");
+  const label = targetAccount?.name || targetAccount?.email || "that account";
+  showAccountSwitchToast(
+    label,
+    targetAccount?.picture || "",
+    "switching",
+  );
 
   // Try instant local switch first (no Google redirect).
   fetch("/api/auth/switch", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email: targetEmail }),
   })
     .then((resp) => {
       if (!resp.ok) throw new Error("no_stored_session");
@@ -1386,28 +1642,50 @@ function switchToAccount(email) {
       syncHistoryUiState();
     })
     .catch(() => {
-      // No stored session for this account — fall back to Google OAuth.
-      routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
+      const message = `Session unavailable for ${label}. Redirecting to sign-in.`;
+      showAccountSwitchToast(
+        message,
+        targetAccount?.picture || "",
+        "switching",
+      );
+
+      routeToBackend(buildGoogleAuthUrl(targetEmail, "redirect"));
     });
 }
 
 let _toastTimer = null;
-function showAccountSwitchToast(name, picture) {
+function showAccountSwitchToast(name, picture, tone = "success") {
   const toast = document.getElementById("accountSwitchToast");
   if (!toast) return;
 
   if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
-  toast.classList.remove("is-hiding");
+  toast.classList.remove("is-hiding", "is-error", "is-success", "is-switching");
+  let toneClass = "is-success";
+  if (tone === "error") {
+    toneClass = "is-error";
+  } else if (tone === "switching") {
+    toneClass = "is-switching";
+  }
+  toast.classList.add(toneClass);
 
   const initials = (name || "?").trim().charAt(0).toUpperCase() || "?";
   const avatarHtml = picture
-    ? `<img class="account-switch-toast-avatar" src="${picture}" alt="" />`
+    ? `<img class="account-switch-toast-avatar" src="${escapeAttribute(picture)}" alt="" />`
     : `<span class="account-switch-toast-fallback">${initials}</span>`;
+  let message = `Switched to ${name || "account"}`;
+  if (tone === "error") {
+    message = name;
+  } else if (tone === "switching") {
+    message = `Switching to ${name || "account"}`;
+  }
+  const iconHtml = tone === "error"
+    ? '<svg class="account-switch-toast-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+    : '<svg class="account-switch-toast-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
   toast.innerHTML = `
-    <svg class="account-switch-toast-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    ${iconHtml}
     ${avatarHtml}
-    <span>Switched to ${name || "account"}</span>
+    <span>${escapeHtml(message)}</span>
   `;
   toast.hidden = false;
 
@@ -1418,6 +1696,54 @@ function showAccountSwitchToast(name, picture) {
       toast.classList.remove("is-hiding");
     }, 350);
   }, 3000);
+}
+
+async function handleGoogleAuthPopupMessage(event) {
+  if (event.origin !== window.location.origin) {
+    return;
+  }
+
+  const payload = event.data;
+  if (!payload || payload.source !== "quair-google-oauth") {
+    return;
+  }
+
+  if (payload.status === "success") {
+    closeAuthModal();
+    if (payload.user) {
+      // Set session cookies on main page
+      if (payload.session_token && payload.jwt_token) {
+        fetch("/api/auth/set-session", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_token: payload.session_token,
+            jwt_token: payload.jwt_token,
+          }),
+        }).catch(() => {
+          // Ignore errors, UI will update anyway
+        });
+      }
+      showLoggedInUI(payload.user);
+      const resolvedUser = getResolvedUser(payload.user);
+      showAccountSwitchToast(
+        resolvedUser.name || payload.user.name,
+        resolvedUser.picture || payload.user.picture,
+      );
+      renderAccountsList();
+      syncHistoryUiState();
+    }
+    await checkSession();
+    return;
+  }
+
+  console.error("Google sign-in failed", payload.error || "unknown_error");
+  showAccountSwitchToast(
+    `Google sign-in failed: ${payload.error || "unknown_error"}`,
+    "",
+    "error",
+  );
 }
 
 function scrubIncognitoUi() {
@@ -1460,7 +1786,7 @@ async function applyLocationFix(position, options = {}) {
   const resolved = await reverseLookupLocation(latitude, longitude);
 
   if (!resolved) {
-    elements.locationText.textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    elements.locationText.textContent = "Location name unavailable";
   }
   if (elements.locationMeta) elements.locationMeta.textContent = "";
 
@@ -1761,6 +2087,14 @@ function buildResultCard(source) {
   if (cardLink) {
     cardLink.addEventListener("click", () => {
       saveHistory(`${source.title} – ${(() => { try { return new URL(source.url).hostname; } catch { return source.url; } })()}`);
+      trackClick({
+        searchEventId: state.lastSearchEventId || null,
+        resultUrl: source.url,
+        resultTitle: source.title,
+        resultDomain: (() => { try { return new URL(source.url).hostname; } catch { return ""; } })(),
+        resultRank: Array.from(elements.results.children).indexOf(card) + 1,
+        queryRaw: state.lastSubmittedQuery,
+      });
     });
   }
   return card;
@@ -2101,6 +2435,37 @@ function updateActiveItem() {
   }
 }
 
+function buildSearchCacheKey(query, settings, attachmentContext) {
+  return [
+    query.trim().toLowerCase(),
+    settings.region,
+    settings.displayLanguage,
+    settings.safeSearch,
+    attachmentContext,
+  ].join("|");
+}
+
+function getCachedSearchPayload(cacheKey) {
+  const cached = state.searchCache.get(cacheKey);
+  if (!cached || Date.now() - cached.timestamp > searchCacheTtlMs) {
+    state.searchCache.delete(cacheKey);
+    return null;
+  }
+  return cached.payload;
+}
+
+function rememberSearchPayload(cacheKey, payload) {
+  state.searchCache.set(cacheKey, {
+    payload,
+    timestamp: Date.now(),
+  });
+
+  if (state.searchCache.size > 25) {
+    const oldestKey = state.searchCache.keys().next().value;
+    state.searchCache.delete(oldestKey);
+  }
+}
+
 async function executeSearch(query, attachmentContext = "", options = {}) {
   const trimmedQuery = query.trim();
   const displayQuery = String(options.displayQuery ?? trimmedQuery).trim() || trimmedQuery;
@@ -2135,6 +2500,16 @@ async function executeSearch(query, attachmentContext = "", options = {}) {
 
   try {
     const translatedQuery = await translateQueryForSearch(trimmedQuery, settings.displayLanguage);
+    const cacheKey = buildSearchCacheKey(translatedQuery, settings, attachmentContext);
+    const cachedPayload = getCachedSearchPayload(cacheKey);
+
+    if (cachedPayload) {
+      renderLiveResults(displayQuery, cachedPayload);
+      setSearchLoading(false, `Ready from recent search for "${displayQuery}"`);
+      void applyPageLanguage(settings.displayLanguage);
+      return;
+    }
+
     const searchUrl = `/api/search?q=${encodeURIComponent(translatedQuery)}&region=${encodeURIComponent(settings.region)}&hl=${encodeURIComponent(settings.displayLanguage)}&safe_search=${encodeURIComponent(settings.safeSearch)}&context=${encodeURIComponent(attachmentContext)}`;
     const response = await fetch(searchUrl, { signal: state.searchController.signal });
 
@@ -2154,7 +2529,19 @@ async function executeSearch(query, attachmentContext = "", options = {}) {
     }
 
     try {
+      rememberSearchPayload(cacheKey, payload);
       renderLiveResults(displayQuery, payload);
+      void trackSearch({
+        queryRaw: trimmedQuery,
+        queryNormalized: payload?.query || trimmedQuery,
+        resultCount: Array.isArray(payload?.sources) ? payload.sources.length : 0,
+        responseMs: payload?.index_status?.response_ms || 0,
+        settings,
+      }).then((eventId) => {
+        if (searchToken === state.activeSearchToken) {
+          state.lastSearchEventId = eventId;
+        }
+      });
     } catch (renderError) {
       console.error(renderError);
       renderErrorState(displayQuery, "Live search could not complete.");
@@ -2324,6 +2711,14 @@ function getAttachmentIconMeta(item) {
   return meta;
 }
 
+function formatAttachmentSummary(summary) {
+  const text = String(summary || "").replace(/\s+/g, " ").trim();
+  if (text.length <= 180) {
+    return text;
+  }
+  return `${text.slice(0, 177).trimEnd()}...`;
+}
+
 function clearAttachments() {
   for (const item of state.attachments) {
     if (item.previewUrl) {
@@ -2332,6 +2727,7 @@ function clearAttachments() {
   }
   state.attachments = [];
   state.attachmentContext = "";
+  state.attachmentSummary = "";
   if (elements.attachPreview) {
     elements.attachPreview.classList.remove("is-visible");
     elements.attachPreview.innerHTML = "";
@@ -2411,6 +2807,8 @@ async function analyzePickedFiles(files) {
     const attachmentQuery = String(payload.search_query || "").trim()
       || "Summarize the uploaded attachment and explain the important details.";
     const attachmentSummary = String(payload.summary || "").trim();
+    const attachmentDetails = String(payload.details || "").trim();
+    const attachmentContext = [attachmentSummary, attachmentDetails].filter(Boolean).join(" ");
 
     clearAttachments();
     state.attachments = files.slice(0, 3).map((file) => ({
@@ -2420,13 +2818,17 @@ async function analyzePickedFiles(files) {
       mime: file.type || "",
       previewUrl: file.type?.startsWith("image/") ? URL.createObjectURL(file) : "",
     }));
-    state.attachmentContext = attachmentSummary;
+    state.attachmentContext = attachmentContext;
+    state.attachmentSummary = attachmentDetails || attachmentSummary;
     renderAttachments();
-    await executeSearch(attachmentQuery, attachmentSummary, {
+    await executeSearch(attachmentQuery, attachmentContext, {
       displayQuery: files[0]?.name || "Attachment analysis",
       inputValue: "",
       saveHistory: false,
     });
+    if (state.attachmentSummary) {
+      setSearchStatus(`Upload summary: ${formatAttachmentSummary(state.attachmentSummary)}`);
+    }
     elements.queryInput.value = "";
     elements.queryInput.focus();
   } catch (error) {
@@ -2440,6 +2842,7 @@ async function analyzePickedFiles(files) {
       previewUrl: file.type?.startsWith("image/") ? URL.createObjectURL(file) : "",
     }));
     state.attachmentContext = "Uploaded file analysis unavailable.";
+    state.attachmentSummary = "Uploaded file analysis unavailable.";
     renderAttachments();
     elements.queryInput.value = "";
     elements.queryInput.focus();
@@ -2818,17 +3221,18 @@ function renderAccountsList() {
     const isCurrent = acct.email?.toLowerCase() === currentEmail;
     const initials = getInitials(acct.name);
     const avatarHtml = acct.picture
-      ? `<img class="account-item-avatar" src="${acct.picture}" alt="" />`
+      ? `<img class="account-item-avatar" src="${escapeAttribute(acct.picture)}" alt="" />`
       : `<span class="account-item-fallback">${initials}</span>`;
     const checkHtml = isCurrent
       ? '<svg class="account-item-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
       : "";
     const removeHtml = !isCurrent
-      ? `<button class="account-item-remove" type="button" title="Remove account" data-remove-email="${(acct.email || "").replace(/"/g, "&quot;")}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`
+      ? `<button class="account-item-remove" type="button" title="Remove account" data-remove-email="${escapeAttribute(acct.email || "")}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`
       : "";
-    const escapedEmail = (acct.email || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
-    const escapedName = (acct.name || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
-    html += `<div class="account-item" data-switch-email="${escapedEmail}">
+    const escapedEmail = escapeHtml(acct.email || "");
+    const escapedName = escapeHtml(acct.name || "");
+    const emailAttribute = escapeAttribute(acct.email || "");
+    html += `<div class="account-item" data-switch-email="${emailAttribute}">
       ${avatarHtml}
       <div class="account-item-info">
         <span class="account-item-name">${escapedName}</span>
@@ -3036,9 +3440,13 @@ function applySettingsUi() {
 function setProfileSection(sectionName) {
   const isOverview = sectionName === "overview";
   const isSettings = sectionName === "settings";
+  const isAdmin = sectionName === "admin";
 
   elements.profileOverviewSection.hidden = !isOverview;
   elements.settingsForm.hidden = !isSettings;
+  if (elements.adminActivitySection) {
+    elements.adminActivitySection.hidden = !isAdmin;
+  }
 
   if (isOverview) {
     elements.profilePanelTitle.textContent = "Your profile";
@@ -3048,6 +3456,11 @@ function setProfileSection(sectionName) {
   if (isSettings) {
     elements.profilePanelTitle.textContent = "Settings";
     elements.profilePanelDescription.textContent = "";
+  }
+
+  if (isAdmin) {
+    elements.profilePanelTitle.textContent = "Admin activity";
+    elements.profilePanelDescription.textContent = "Track signed-up users, their search queries, and visited result websites.";
   }
 
   void applyPageLanguage(getStoredSettings().displayLanguage);
@@ -3073,6 +3486,9 @@ function openProfilePanel(sectionName = "overview") {
   applyUserSummary(state.profileUser);
   applySettingsUi();
   setProfileSection(sectionName);
+  if (sectionName === "admin") {
+    void loadAdminActivity();
+  }
   elements.profileModal.classList.add("is-open");
   elements.profileModal.setAttribute("aria-hidden", "false");
 }
@@ -3115,6 +3531,9 @@ function showLoggedInUI(user) {
 
   elements.profileName.textContent = resolvedUser.name || "User";
   elements.profileEmail.textContent = resolvedUser.handle || resolvedUser.provider || "";
+  if (elements.menuAdminDashboard) {
+    elements.menuAdminDashboard.hidden = !Boolean(state.profileUser?.is_admin);
+  }
   applyUserSummary(state.profileUser);
   applySettingsUi();
   saveKnownAccount(state.profileUser);
@@ -3130,6 +3549,10 @@ function showLoggedOutUI() {
   elements.profileDropdown.hidden = true;
   elements.avatarButton.setAttribute("aria-expanded", "false");
   state.profileUser = null;
+  state.adminActivityRows = [];
+  if (elements.menuAdminDashboard) {
+    elements.menuAdminDashboard.hidden = true;
+  }
   // Do not persist history for signed-out sessions.
   try {
     localStorage.removeItem(getUserHistoryKey());
@@ -3345,11 +3768,17 @@ function bindEvents() {
   elements.authForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const email = elements.authEmailInput.value.trim();
-    if (email) {
-      routeToBackend(`/api/auth/google/login?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`);
-    } else {
-      routeToBackend("/api/auth/google/login");
+    const knownAccount = getKnownAccounts().find(
+      (account) => account.email?.toLowerCase() === email.toLowerCase(),
+    );
+
+    if (email && knownAccount) {
+      closeAuthModal();
+      switchToAccount(email);
+      return;
     }
+
+    openGoogleAuthPopup(email);
   });
 
   for (const button of document.querySelectorAll("[data-provider]")) {
@@ -3357,10 +3786,15 @@ function bindEvents() {
       const provider = button.getAttribute("data-provider");
       if (provider === "Google") {
         const email = elements.authEmailInput.value.trim();
-        const query = email
-          ? `?login_hint=${encodeURIComponent(email)}&expected_email=${encodeURIComponent(email)}`
-          : "";
-        routeToBackend(`/api/auth/google/login${query}`);
+        const knownAccount = getKnownAccounts().find(
+          (account) => account.email?.toLowerCase() === email.toLowerCase(),
+        );
+        if (email && knownAccount) {
+          closeAuthModal();
+          switchToAccount(email);
+          return;
+        }
+        openGoogleAuthPopup(email);
       }
     });
   }
@@ -3404,6 +3838,14 @@ function bindEvents() {
     openProfilePanel("settings");
   });
 
+  if (elements.menuAdminDashboard) {
+    elements.menuAdminDashboard.addEventListener("click", () => {
+      elements.profileDropdown.hidden = true;
+      elements.avatarButton.setAttribute("aria-expanded", "false");
+      openProfilePanel("admin");
+    });
+  }
+
   elements.historyCloseButton.addEventListener("click", closeHistoryModal);
   elements.historyBackdrop.addEventListener("click", closeHistoryModal);
 
@@ -3419,7 +3861,7 @@ function bindEvents() {
   elements.addAccountButton.addEventListener("click", () => {
     elements.profileDropdown.hidden = true;
     elements.avatarButton.setAttribute("aria-expanded", "false");
-    routeToBackend("/api/auth/google/login");
+    openGoogleAuthPopup();
   });
 
   elements.profileForm.addEventListener("submit", (event) => {
@@ -3443,6 +3885,12 @@ function bindEvents() {
     persistSettingsFromUi();
     closeProfilePanel();
   });
+
+  if (elements.adminActivityRefreshButton) {
+    elements.adminActivityRefreshButton.addEventListener("click", () => {
+      void loadAdminActivity();
+    });
+  }
 
   const profileAvatarWrap = document.querySelector(".profile-summary-avatar-wrap");
   if (profileAvatarWrap && elements.profileAvatarFileInput) {
@@ -3853,6 +4301,10 @@ function startLocalAutoRefresh() {
 }
 
 async function initializePage() {
+  window.addEventListener("message", (event) => {
+    void handleGoogleAuthPopupMessage(event);
+  });
+
   const params = new URLSearchParams(window.location.search);
   const isAuthSuccess = params.has("auth");
   const isAuthError = params.has("auth_error");

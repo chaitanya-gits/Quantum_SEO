@@ -7,7 +7,7 @@
   <title>[QuAir Search]</title>
   <link id="favicon" rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234870ff'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(60 32 32)'/%3E%3Cellipse cx='32' cy='32' rx='22' ry='8' fill='none' stroke='%23fff' stroke-width='2.5' transform='rotate(120 32 32)'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/assets/styles.css?v=20260424w41" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20260424w42" />
 </head>
 
 <body>
@@ -38,6 +38,8 @@
               overview</button>
             <button class="profile-menu-item" type="button" role="menuitem"
               data-profile-panel="settings">Settings</button>
+            <button id="menuAdminDashboard" class="profile-menu-item" type="button" role="menuitem"
+              data-profile-panel="admin" hidden>Admin activity</button>
             <button id="logoutButton" class="profile-menu-item" type="button" role="menuitem">Sign out</button>
 
             <div id="accountsSection" class="dropdown-accounts-section">
@@ -292,7 +294,12 @@
         </div>
       </section>
 
-      <div id="searchingStatus" class="searching-status" aria-live="polite"></div>
+      <div id="searchingStatus" class="searching-status" aria-live="polite" aria-label="">
+        <span class="searching-status-text"></span>
+        <span class="searching-bubble"></span>
+        <span class="searching-bubble"></span>
+        <span class="searching-bubble"></span>
+      </div>
     </section>
 
     <section class="results-section">
@@ -566,6 +573,40 @@
 
         <button class="profile-save-button" type="submit">Save settings</button>
       </form>
+
+      <section id="adminActivitySection" class="profile-section" hidden>
+        <div class="profile-summary-card">
+          <div class="profile-summary-content">
+            <div class="profile-greeting">Admin activity table</div>
+            <span class="profile-summary-email">Signed-up users, searches, and visited result URLs</span>
+          </div>
+        </div>
+        <div class="history-header-actions">
+          <button id="adminActivityRefreshButton" class="history-export" type="button">Refresh</button>
+        </div>
+        <div id="adminActivityStatus" class="utility-output utility-output-subtle">Loading activity…</div>
+        <div class="profile-summary-card">
+          <div class="profile-summary-content">
+            <div class="profile-greeting">Read-only report</div>
+            <span id="adminReportSummary" class="profile-summary-email">Loading report summary…</span>
+          </div>
+        </div>
+        <pre id="adminReportJson" class="utility-output utility-output-subtle" style="white-space: pre-wrap;"></pre>
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Signed Up</th>
+              <th>Search Query</th>
+              <th>Searched At</th>
+              <th>Visited Website</th>
+              <th>Visited At</th>
+            </tr>
+          </thead>
+          <tbody id="adminActivityTableBody"></tbody>
+        </table>
+      </section>
     </section>
   </div>
 
@@ -623,7 +664,7 @@
 
   <div id="accountSwitchToast" class="account-switch-toast" aria-live="polite" hidden></div>
 
-  <script type="module" src="/assets/app.js?v=20260424w41"></script>
+  <script type="module" src="/assets/app.js?v=20260424w42"></script>
 </body>
 
 </html>

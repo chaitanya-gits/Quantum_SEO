@@ -14,7 +14,7 @@ QuAir Search is a full-stack search experience that combines live web results wi
 
 ```powershell
 cd G:\Quantum_SEO\infra\docker
-docker-compose -p quantum_seo up -d
+docker-compose -p quantum_seo up -d --build
 Start-Process "http://localhost:3000"
 ```
 
@@ -41,6 +41,40 @@ Run the no-Docker smoke test:
 cd G:\Quantum_SEO
 node tests/local_dev_server.test.mjs
 ```
+
+## Backup & restore snapshots
+
+Use the database URL in `.env` to create and restore PostgreSQL snapshots.
+
+Create a new snapshot:
+
+```powershell
+cd G:\Quantum_SEO
+python .\scripts\db_snapshot.py backup
+```
+
+Restore a snapshot from the latest file:
+
+```powershell
+cd G:\Quantum_SEO
+python .\scripts\db_snapshot.py restore
+```
+
+Restore a specific snapshot file:
+
+```powershell
+cd G:\Quantum_SEO
+python .\scripts\db_snapshot.py restore backups\quantum_seo_backup_20260501_123456.dump
+```
+
+List available snapshots:
+
+```powershell
+cd G:\Quantum_SEO
+python .\scripts\db_snapshot.py list
+```
+
+The script uses `pg_dump`/`pg_restore` from your PostgreSQL client tools and will read `DATABASE_URL` from your environment or `.env`.
 
 ## Deployment notes
 

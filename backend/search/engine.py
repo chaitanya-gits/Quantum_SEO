@@ -290,7 +290,8 @@ class SearchEngine:
         self._pagerank_cache.invalidate()
         self._response_cache.invalidate()
 
-    async def search(self, query: str, limit: int = 30, filters: SearchFilters | None = None) -> dict:
+    async def search(self, query: str, limit: int = 30, filters: SearchFilters | None = None, request: Any | None = None) -> dict:
+        start_time = asyncio.get_running_loop().time()
         filters = filters or SearchFilters()
         parsed_query = parse_query(query)
         search_queries = [item for item in parsed_query.search_queries if item]
@@ -310,7 +311,7 @@ class SearchEngine:
         )
         cached_payload = await self._response_cache.get(cache_key)
         if cached_payload is not None:
-            await self.redis.record_query(parsed_query.normalized)
+            await self._safe_record_query(parsed_query.normalized)
             return cached_payload
 
         mode_timeout = settings.search_mode_timeout_seconds
@@ -466,8 +467,48 @@ class SearchEngine:
         }
 
         await self._response_cache.set(cache_key, payload)
+        if request is not None:
+            response_ms = round((asyncio.get_running_loop().time() - start_time) * 1000)
+            asyncio.create_task(
+                self._safe_record_search_event(
+                    request,
+                    parsed_query,
+                    payload,
+                    filters,
+                    int(response_ms) if response_ms is not None else 0,
+                )
+            )
         await record_task
         return payload
+
+    async def _safe_record_search_event(
+        self,
+        request: Any,
+        parsed_query,
+        payload: dict,
+        filters: SearchFilters,
+        response_ms: int,
+    ) -> None:
+        try:
+            session = getattr(request.state, "session", None)
+            await self.postgres.record_search_event(
+                user_id=str(session["user_id"]) if session else None,
+                session_id=str(session["id"]) if session else None,
+                anonymous_id=request.headers.get("x-anonymous-id", ""),
+                query_raw=str(payload.get("original_query", parsed_query.normalized)),
+                query_normalized=parsed_query.normalized,
+                result_count=len(payload.get("sources", [])),
+                response_ms=response_ms,
+                ip_address=request.client.host if request.client else "",
+                user_agent=request.headers.get("user-agent", ""),
+                region=filters.region,
+                display_language=str(payload.get("applied_filters", {}).get("display_language", "en-US")),
+                safe_search=filters.safe_search,
+                has_attachment=False,
+                search_tab=str(payload.get("applied_filters", {}).get("search_tab", "all")),
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception("failed to record search event")
 
     @staticmethod
     async def _drain_cancelled_task(task: asyncio.Task[Any]) -> None:

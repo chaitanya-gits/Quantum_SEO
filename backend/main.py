@@ -6,11 +6,13 @@ from typing import Iterable
 
 import httpx
 import uvicorn
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.api.analytics import router as analytics_router
+from backend.api.admin import router as admin_router
 from backend.api.auth import router as auth_router
 from backend.api.health import router as health_router
 from backend.api.search import router as search_router
@@ -18,10 +20,13 @@ from backend.api.suggest import router as suggest_router
 from backend.api.trending import router as trending_router
 from backend.api.attachments import router as attachments_router
 from backend.api.config_api import router as config_router
-from backend.config import settings
+from backend.config import settings, validate_security_settings
 from backend.crawler.scheduler import CrawlScheduler
 from backend.runtime import build_frontier, open_runtime_services, require_redis, require_search_index
 from backend.search.engine import SearchEngine
+
+
+validate_security_settings()
 
 
 @asynccontextmanager
@@ -45,7 +50,7 @@ async def lifespan(app: FastAPI):
         )
         app.state.frontier = frontier
         app.state.scheduler = None
-        if settings.enable_crawl_scheduler:
+        if settings.enable_crawl_scheduler and services.postgres.is_available:
             app.state.scheduler = CrawlScheduler(frontier, services.postgres, search_index)
             app.state.scheduler.start()
 
@@ -59,17 +64,32 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def session_middleware(request: Request, call_next):
+    token = request.cookies.get("qsession")
+    if token:
+        try:
+            session = await request.app.state.postgres.get_session(token)
+            request.state.session = session
+        except Exception:
+            request.state.session = None
+    else:
+        request.state.session = None
+    return await call_next(request)
 
 app.include_router(search_router, prefix="/api")
 app.include_router(suggest_router, prefix="/api")
 app.include_router(trending_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 app.include_router(attachments_router, prefix="/api")
 app.include_router(config_router, prefix="/api")
 

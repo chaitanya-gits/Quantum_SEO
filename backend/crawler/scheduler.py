@@ -31,8 +31,18 @@ class CrawlScheduler:
             await ingest_documents(self._postgres, self._search_index, [document])
             await self._frontier.seed(document.get("outbound_links", [])[:10])
 
+    async def _refresh_views(self) -> None:
+        try:
+            async with self._postgres.pool.acquire() as connection:
+                await connection.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_daily_search_stats")
+                await connection.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_top_queries")
+                await connection.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_top_clicked_urls")
+        except Exception:
+            pass
+
     def start(self) -> None:
         self._scheduler.add_job(self._run_once, "interval", seconds=settings.crawl_interval_seconds, id="crawl-loop", replace_existing=True)
+        self._scheduler.add_job(self._refresh_views, "interval", hours=1, id="mv-refresh", replace_existing=True)
         self._scheduler.start()
 
     def stop(self) -> None:

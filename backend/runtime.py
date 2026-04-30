@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from backend.config import settings
 from backend.crawler.frontier import CrawlFrontier
 from backend.indexer.es_client import DisabledSearchIndexClient, SearchIndexClient
-from backend.storage.postgres import PostgresStorage
+from backend.storage.postgres import DisabledPostgresStorage, PostgresStorage
 from backend.storage.redis import RedisStorage
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -25,7 +29,11 @@ async def open_runtime_services(
     ensure_index: bool = False,
 ):
     postgres = PostgresStorage(settings.database_url)
-    await postgres.connect()
+    try:
+        await postgres.connect()
+    except Exception as exc:  # pragma: no cover - startup fallback
+        logger.warning("Postgres unavailable at startup; continuing in degraded mode: %s", exc)
+        postgres = DisabledPostgresStorage(settings.database_url, exc)
 
     redis = RedisStorage(settings.redis_url) if with_redis else None
     search_index = None
