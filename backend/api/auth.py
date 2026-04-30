@@ -559,7 +559,7 @@ async def get_me(request: Request):
         if not request.cookies.get(cookie_name):
             response.set_cookie(
                 cookie_name,
-                token,
+                _sign_jwt(user),
                 httponly=True,
                 samesite=settings.cookie_samesite,
                 max_age=_TOKEN_MAX_AGE,
