@@ -29,7 +29,7 @@ from backend.storage.postgres import PostgresStorage
 from backend.storage.redis import RedisStorage
 
 try:
-    import google.generativeai as genai
+    import google.generativeai as genai  # type: ignore
     if settings.gemini_api_key:
         genai.configure(api_key=settings.gemini_api_key)
     _GEMINI_AVAILABLE = bool(settings.gemini_api_key)
