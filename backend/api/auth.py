@@ -151,6 +151,12 @@ def _build_popup_response(status: str, user: dict | None = None, error: str = ""
         "session_token": session_token,
         "jwt_token": jwt_token,
     }
+    payload_json = (
+        json.dumps(payload)
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
     html = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -160,7 +166,7 @@ def _build_popup_response(status: str, user: dict | None = None, error: str = ""
 <body>
   <script>
     (function() {{
-      const payload = {json.dumps(payload)};
+      const payload = {payload_json};
       try {{
         if (window.opener && !window.opener.closed) {{
           window.opener.postMessage(payload, window.location.origin);
