@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -116,10 +116,12 @@ async def _search_duckduckgo(query: str, *, limit: int, region: str = "", safe_s
         
         # Give official websites a massive boost to ensure they're #1
         score = 1.0
+        parsed_href = urlparse(href)
+        host = (parsed_href.hostname or "").lower()
         domain_match = title.lower().replace(" ", "") in href.lower() or href.lower().replace("www.", "").startswith(f"https://{query.lower().replace(' ', '')}")
         if domain_match:
             score = 10.0
-        elif "wikipedia.org" in href:
+        elif host == "wikipedia.org" or host.endswith(".wikipedia.org"):
             score = 8.0
             
         serialized.append(
