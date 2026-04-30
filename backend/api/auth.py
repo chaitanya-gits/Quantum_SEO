@@ -76,13 +76,13 @@ def _verify_jwt(token: str) -> dict | None:
 
 def _email_cookie_name(email: str) -> str:
     """Return a per-account cookie name derived from the email address."""
-    digest = hashlib.md5(email.strip().lower().encode()).hexdigest()[:12]
+    digest = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:12]
     return f"{_ACCT_PREFIX}{digest}"
 
 
 def _database_email_cookie_name(email: str) -> str:
     """Return a per-account database session cookie name derived from email."""
-    digest = hashlib.md5(email.strip().lower().encode()).hexdigest()[:12]
+    digest = hashlib.sha256(email.strip().lower().encode()).hexdigest()[:12]
     return f"{_DB_ACCT_PREFIX}{digest}"
 
 
