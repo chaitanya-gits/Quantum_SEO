@@ -377,14 +377,19 @@ class SearchEngine:
         ranked_results = apply_freshness_boost(ranked_results)
         ranked_results = apply_region_boost(ranked_results, filters.region)
         
+        from urllib.parse import urlparse
         # Massive global boost for official sites and Wikipedia
         query_normalized = query.lower().replace(" ", "")
         for item in ranked_results:
             url = str(item.get("url", "")).lower()
+            try:
+                parsed_host = urlparse(url).hostname or ""
+            except Exception:
+                parsed_host = ""
             if query_normalized and query_normalized in url:
                 # If the domain itself contains the query (like quinfosys in quinfosys.com)
                 item["score"] = item.get("score", 0.0) + 50.0
-            elif "wikipedia.org" in url:
+            elif parsed_host == "wikipedia.org" or parsed_host.endswith(".wikipedia.org"):
                 item["score"] = item.get("score", 0.0) + 20.0
                 
         ranked_results.sort(key=lambda item: item["score"], reverse=True)
