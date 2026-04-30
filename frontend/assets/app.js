@@ -535,12 +535,29 @@ function openSearchVertical(tabName) {
   window.open(url.toString(), "_blank", "noopener,noreferrer");
 }
 
+function sanitizePreviewImageSrc(src) {
+  const value = String(src || "").trim();
+  if (!value) return "";
+
+  if (value.startsWith("blob:")) {
+    return value;
+  }
+
+  return "";
+}
+
 function openImagePreview(src) {
   if (!elements.imagePreviewModal || !elements.imagePreviewImage) {
     return;
   }
 
-  elements.imagePreviewImage.src = src;
+  const safeSrc = sanitizePreviewImageSrc(src);
+  if (!safeSrc) {
+    closeImagePreview();
+    return;
+  }
+
+  elements.imagePreviewImage.src = safeSrc;
   elements.imagePreviewModal.classList.add("is-open");
   elements.imagePreviewModal.setAttribute("aria-hidden", "false");
 }
