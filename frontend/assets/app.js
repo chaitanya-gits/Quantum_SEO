@@ -539,11 +539,20 @@ function sanitizePreviewImageSrc(src) {
   const value = String(src || "").trim();
   if (!value) return "";
 
-  if (value.startsWith("blob:")) {
-    return value;
-  }
+  try {
+    const parsed = new URL(value, window.location.href);
+    if (parsed.protocol !== "blob:") {
+      return "";
+    }
 
-  return "";
+    if (parsed.origin !== window.location.origin) {
+      return "";
+    }
+
+    return parsed.href;
+  } catch (_error) {
+    return "";
+  }
 }
 
 function openImagePreview(src) {
