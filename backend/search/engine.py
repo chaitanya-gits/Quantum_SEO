@@ -544,11 +544,19 @@ class SearchEngine:
 
         Prefers Wikipedia sources so the About section reads like a clean factual
         overview rather than a mix of news articles.
+            from urllib.parse import urlparse
         """
         if not _GEMINI_AVAILABLE or not sources:
+            def _is_wikipedia_url(raw_url: Any) -> bool:
+                try:
+                    host = (urlparse(str(raw_url or "")).hostname or "").lower()
+                except Exception:
+                    return False
+                return host == "wikipedia.org" or host.endswith(".wikipedia.org")
+
             return "insufficient data"
         try:
-            import re as _re
+                if _is_wikipedia_url(s.get("url", ""))
 
             # Prefer Wikipedia sources for the About text
             wiki_sources = [
