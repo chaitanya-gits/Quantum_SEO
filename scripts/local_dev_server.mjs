@@ -39,7 +39,30 @@ async function proxyToBackend(request, response, requestUrl) {
     return;
   }
 
-  const target = new URL(requestUrl.pathname + requestUrl.search, API_PROXY_ORIGIN);
+  let proxyOriginUrl;
+  try {
+    proxyOriginUrl = new URL(API_PROXY_ORIGIN);
+  } catch {
+    sendJson(response, 500, { detail: "Invalid API_PROXY_ORIGIN configuration." });
+    return;
+  }
+
+  if (proxyOriginUrl.protocol !== "http:" && proxyOriginUrl.protocol !== "https:") {
+    sendJson(response, 500, { detail: "API proxy origin must use http or https." });
+    return;
+  }
+
+  if (!requestUrl.pathname.startsWith("/api/auth/")) {
+    sendJson(response, 400, { detail: "Invalid proxied path." });
+    return;
+  }
+
+  const target = new URL(requestUrl.pathname + requestUrl.search, proxyOriginUrl);
+  if (target.origin !== proxyOriginUrl.origin) {
+    sendJson(response, 400, { detail: "Invalid proxy target." });
+    return;
+  }
+
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers)) {
     if (!value) continue;
